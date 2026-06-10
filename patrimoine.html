@@ -56,6 +56,11 @@
   .cat-tag { display: inline-block; font-size: 0.75rem; padding: 2px 8px; border-radius: 10px; background: #efece2; color: var(--muted); }
   .actions { display: flex; gap: 8px; flex-wrap: wrap; }
   .muted { color: var(--muted); font-size: 0.85rem; }
+  details summary { cursor: pointer; color: var(--accent); font-size: 1.1rem; padding-bottom: 6px; }
+  .strategy { font-size: 0.92rem; line-height: 1.55; }
+  .strategy h3 { font-size: 0.95rem; color: var(--accent2); margin: 12px 0 4px; font-weight: normal; text-transform: uppercase; letter-spacing: 0.5px; }
+  .strategy ul { margin: 4px 0 4px 20px; }
+  .milestones { display: flex; gap: 16px; flex-wrap: wrap; margin-top: 12px; }
   @media (max-width: 800px) { .grid-form { grid-template-columns: 1fr 1fr; } }
 </style>
 </head>
@@ -82,6 +87,39 @@
     <div class="total-box"><div class="label">Total en EUR 🇧🇪</div><div class="value" id="totalEUR">–</div></div>
     <div class="total-box"><div class="label">Nombre d'actifs</div><div class="value" id="countAssets">–</div></div>
   </div>
+</div>
+
+<div class="card">
+  <details>
+    <summary>Stratégie — Vision 2050</summary>
+    <div class="strategy">
+      <h3>Le pivot (2026)</h3>
+      <p>Vente de Kraainem (1,8 M€, produit net ~1,74 M€) pour sortir d'un immobilier à ~1,1 % net et basculer vers une architecture financière à effet composé.</p>
+      <h3>Déploiement du capital</h3>
+      <ul>
+        <li><strong>Delen Private Bank</strong> : ~1 M€ (cœur, mandat discrétionnaire)</li>
+        <li><strong>Mandat satellite suisse (UBS)</strong> : ~500 K€ via AV Lux / FID (neutralité fiscale + transmission à 0 % via clause bénéficiaire)</li>
+        <li><strong>Réserve liquide</strong> : ~100–200 K€</li>
+        <li><strong>Chalet Maria — La Tzoumaz (Valais, 4 Vallées)</strong> : CHF 1,8 M, crédit bullet adossé au portefeuille, cashflow locatif positif réinvesti à 70 % dans le mandat</li>
+      </ul>
+      <h3>Leviers</h3>
+      <ul>
+        <li>Crédit Lombard plafonné (LTV conservateur, nantissement sans liquidation)</li>
+        <li>Re-gearing périodique pour maintenir le levier optimal</li>
+        <li>DCA annuel (~80 K€/an) + réinvestissement intégral des revenus</li>
+      </ul>
+      <h3>Bouclier fiscal belge</h3>
+      <p>Plus-values actions 0 %, fonds de capitalisation pour neutraliser le précompte de 30 %, discipline « bon père de famille » pour éviter la requalification à 33 %.</p>
+      <h3>Sécurité</h3>
+      <p>Réserve de 24 mois d'intérêts, LTV sous le seuil bancaire, or/BTC 2–5 % hors système, mandat extrajudiciaire, séparation de biens.</p>
+      <h3>Trajectoire</h3>
+      <p>Cap des 10 M€ vers 2035 ; horizon 2050 selon scénarios de ~16 M€ (central documents) à ~24 M€+ avec hypothèses de rendement actualisées (Delen 8,5 %, satellite ~11 %). Rente cible : retrait sécurisé 3,5 % → ~1 M€/an sans entamer le capital.</p>
+      <h3>Transmission</h3>
+      <p>Académie familiale, capital d'apprentissage progressif pour les héritiers, gouvernance trimestrielle.</p>
+      <p style="margin-top:12px"><button onclick="loadStrategy()">Charger les actifs de la stratégie</button>
+      <span class="muted">— pré-remplit le tableau ci-dessous avec ces montants et rendements</span></p>
+    </div>
+  </details>
 </div>
 
 <div class="card">
@@ -125,13 +163,18 @@
   <h2>Projection</h2>
   <div class="row">
     <label>Horizon :</label>
-    <input type="range" id="years" min="1" max="40" value="20" oninput="render()">
-    <strong><span id="yearsLabel">20</span> ans</strong>
+    <input type="range" id="years" min="1" max="40" value="25" oninput="render()">
+    <strong><span id="yearsLabel">25</span> ans</strong>
     <label style="margin-left:20px">Afficher en :</label>
     <select id="projCur" onchange="render()"><option>CHF</option><option>EUR</option></select>
   </div>
   <canvas id="chart" width="1040" height="320"></canvas>
   <p class="muted" id="projSummary"></p>
+  <div class="totals milestones">
+    <div class="total-box"><div class="label">Cap 2035</div><div class="value" id="ms2035">–</div></div>
+    <div class="total-box"><div class="label">Horizon 2050</div><div class="value" id="ms2050">–</div></div>
+    <div class="total-box"><div class="label">Rente sécurisée 3,5 %/an (fin d'horizon)</div><div class="value" id="msRente">–</div></div>
+  </div>
 </div>
 
 <p class="muted" style="text-align:center">Toutes les données restent dans votre navigateur (localStorage). Rien n'est envoyé sur Internet.</p>
@@ -295,6 +338,36 @@ function drawChart() {
     state.assets.length === 0 ? '' :
     `Aujourd'hui : ${fmt(start, cur)} → dans ${years} ans : ${fmt(end, cur)}` +
     (start > 0 ? ` (×${(end / start).toFixed(2)})` : '');
+
+  // Jalons de la stratégie Vision 2050 + rente au retrait sécurisé de 3,5 %
+  const nowYear = new Date().getFullYear();
+  const totalAt = yr => {
+    let t = 0;
+    state.assets.forEach(a => {
+      const v = projectAsset(a, yr * 12);
+      t += cur === 'CHF' ? toCHF(v, a.cur) : toEUR(v, a.cur);
+    });
+    return t;
+  };
+  const y2035 = 2035 - nowYear, y2050 = 2050 - nowYear;
+  const has = state.assets.length > 0;
+  document.getElementById('ms2035').textContent = has && y2035 >= 0 ? fmt(totalAt(y2035), cur) : '–';
+  document.getElementById('ms2050').textContent = has && y2050 >= 0 ? fmt(totalAt(y2050), cur) : '–';
+  document.getElementById('msRente').textContent = has ? fmt(end * 0.035, cur) + ' / an' : '–';
+}
+
+function loadStrategy() {
+  if (state.assets.length && !confirm('Remplacer les actifs actuels par ceux de la stratégie Vision 2050 ?')) return;
+  // DCA ~80 K€/an ≈ 6 700 €/mois, affecté au mandat cœur Delen
+  state.assets = [
+    { name: 'Delen Private Bank (mandat cœur)', cat: 'Investissements', cur: 'EUR', value: 1000000, growth: 8.5, contrib: 6700 },
+    { name: 'Mandat satellite suisse (UBS, AV Lux/FID)', cat: 'Investissements', cur: 'EUR', value: 500000, growth: 11, contrib: 0 },
+    { name: 'Réserve liquide', cat: 'Épargne', cur: 'EUR', value: 150000, growth: 0.5, contrib: 0 },
+    { name: 'Chalet Maria — La Tzoumaz', cat: 'Immobilier', cur: 'CHF', value: 1800000, growth: 2, contrib: 0 },
+    { name: 'Crédit bullet chalet (adossé au portefeuille)', cat: 'Dette', cur: 'CHF', value: -1800000, growth: 0, contrib: 0 },
+    { name: 'Or / BTC hors système (~3 %)', cat: 'Autre', cur: 'EUR', value: 60000, growth: 5, contrib: 0 },
+  ];
+  save(); render();
 }
 
 function exportData() {
