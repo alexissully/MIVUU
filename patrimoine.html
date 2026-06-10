@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Patrimoine Familial</title>
+<style>
+  :root {
+    --bg: #f6f4ef;
+    --card: #ffffff;
+    --ink: #2b2a26;
+    --muted: #7a7668;
+    --accent: #1f6f54;
+    --accent2: #b08d3e;
+    --red: #a04438;
+    --border: #e3dfd3;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: Georgia, 'Times New Roman', serif;
+    background: var(--bg);
+    color: var(--ink);
+    padding: 24px;
+    max-width: 1100px;
+    margin: 0 auto;
+  }
+  h1 { font-size: 1.7rem; font-weight: normal; letter-spacing: 0.5px; }
+  h1 small { color: var(--muted); font-size: 0.9rem; }
+  h2 { font-size: 1.1rem; font-weight: normal; color: var(--accent); margin-bottom: 12px; border-bottom: 1px solid var(--border); padding-bottom: 6px; }
+  header { display: flex; justify-content: space-between; align-items: baseline; flex-wrap: wrap; gap: 8px; margin-bottom: 20px; }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 18px; margin-bottom: 20px; }
+  .totals { display: flex; gap: 16px; flex-wrap: wrap; }
+  .total-box { flex: 1; min-width: 200px; padding: 14px; border: 1px solid var(--border); border-radius: 6px; background: #fbfaf6; }
+  .total-box .label { color: var(--muted); font-size: 0.85rem; }
+  .total-box .value { font-size: 1.5rem; margin-top: 4px; }
+  table { width: 100%; border-collapse: collapse; font-size: 0.95rem; }
+  th { text-align: left; color: var(--muted); font-weight: normal; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.5px; padding: 6px 8px; border-bottom: 1px solid var(--border); }
+  td { padding: 8px; border-bottom: 1px solid var(--border); }
+  td.num, th.num { text-align: right; }
+  input, select, button {
+    font-family: inherit; font-size: 0.95rem; color: var(--ink);
+    border: 1px solid var(--border); border-radius: 4px; padding: 6px 8px; background: #fff;
+  }
+  input:focus, select:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+  input[type="number"] { text-align: right; }
+  button { cursor: pointer; background: var(--accent); color: #fff; border: none; padding: 8px 14px; }
+  button:hover { opacity: 0.9; }
+  button.ghost { background: transparent; color: var(--muted); border: 1px solid var(--border); }
+  button.danger { background: transparent; color: var(--red); border: none; font-size: 1.1rem; padding: 2px 8px; }
+  .row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 12px; }
+  .row label { color: var(--muted); font-size: 0.9rem; }
+  .grid-form { display: grid; grid-template-columns: 2fr 1.4fr 0.9fr 1.2fr 1fr 1.2fr auto; gap: 8px; align-items: end; }
+  .grid-form .field label { display: block; font-size: 0.75rem; color: var(--muted); margin-bottom: 3px; }
+  .grid-form input, .grid-form select { width: 100%; }
+  canvas { width: 100%; height: 320px; }
+  .cat-tag { display: inline-block; font-size: 0.75rem; padding: 2px 8px; border-radius: 10px; background: #efece2; color: var(--muted); }
+  .actions { display: flex; gap: 8px; flex-wrap: wrap; }
+  .muted { color: var(--muted); font-size: 0.85rem; }
+  @media (max-width: 800px) { .grid-form { grid-template-columns: 1fr 1fr; } }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Patrimoine Familial <small>· CHF &amp; EUR · 100 % local</small></h1>
+  <div class="actions">
+    <button class="ghost" onclick="exportData()">Exporter (JSON)</button>
+    <button class="ghost" onclick="document.getElementById('importFile').click()">Importer</button>
+    <input type="file" id="importFile" accept=".json" style="display:none" onchange="importData(event)">
+  </div>
+</header>
+
+<div class="card">
+  <div class="row">
+    <label>Taux de change : 1 EUR =</label>
+    <input type="number" id="fxRate" step="0.001" min="0.1" style="width:90px" onchange="save(); render()">
+    <label>CHF</label>
+    <span class="muted">— à ajuster manuellement selon le cours du jour</span>
+  </div>
+  <div class="totals">
+    <div class="total-box"><div class="label">Total en CHF 🇨🇭</div><div class="value" id="totalCHF">–</div></div>
+    <div class="total-box"><div class="label">Total en EUR 🇧🇪</div><div class="value" id="totalEUR">–</div></div>
+    <div class="total-box"><div class="label">Nombre d'actifs</div><div class="value" id="countAssets">–</div></div>
+  </div>
+</div>
+
+<div class="card">
+  <h2>Actifs &amp; dettes</h2>
+  <table id="assetTable">
+    <thead>
+      <tr>
+        <th>Nom</th><th>Catégorie</th><th>Devise</th>
+        <th class="num">Valeur</th><th class="num">Croissance %/an</th>
+        <th class="num">Apport mensuel</th><th></th>
+      </tr>
+    </thead>
+    <tbody id="assetBody"></tbody>
+  </table>
+  <p class="muted" id="emptyMsg" style="margin-top:10px">Aucun actif pour le moment — ajoutez-en un ci-dessous. Pour une dette (hypothèque, prêt), entrez une valeur négative.</p>
+
+  <div class="grid-form" style="margin-top:16px">
+    <div class="field"><label>Nom</label><input id="fName" placeholder="ex. Maison Bruxelles"></div>
+    <div class="field"><label>Catégorie</label>
+      <select id="fCat">
+        <option>Immobilier</option>
+        <option>Compte bancaire</option>
+        <option>Épargne</option>
+        <option>Investissements</option>
+        <option>Prévoyance / Pension</option>
+        <option>Dette</option>
+        <option>Autre</option>
+      </select>
+    </div>
+    <div class="field"><label>Devise</label>
+      <select id="fCur"><option>CHF</option><option>EUR</option></select>
+    </div>
+    <div class="field"><label>Valeur</label><input type="number" id="fVal" placeholder="0" step="100"></div>
+    <div class="field"><label>Croissance %/an</label><input type="number" id="fGrowth" placeholder="0" step="0.1" value="0"></div>
+    <div class="field"><label>Apport mensuel</label><input type="number" id="fContrib" placeholder="0" step="50" value="0"></div>
+    <div class="field"><button onclick="addAsset()">Ajouter</button></div>
+  </div>
+</div>
+
+<div class="card">
+  <h2>Projection</h2>
+  <div class="row">
+    <label>Horizon :</label>
+    <input type="range" id="years" min="1" max="40" value="20" oninput="render()">
+    <strong><span id="yearsLabel">20</span> ans</strong>
+    <label style="margin-left:20px">Afficher en :</label>
+    <select id="projCur" onchange="render()"><option>CHF</option><option>EUR</option></select>
+  </div>
+  <canvas id="chart" width="1040" height="320"></canvas>
+  <p class="muted" id="projSummary"></p>
+</div>
+
+<p class="muted" style="text-align:center">Toutes les données restent dans votre navigateur (localStorage). Rien n'est envoyé sur Internet.</p>
+
+<script>
+const STORE_KEY = 'patrimoine-familial-v1';
+let state = { fx: 0.95, assets: [] };
+
+function load() {
+  try {
+    const raw = localStorage.getItem(STORE_KEY);
+    if (raw) state = JSON.parse(raw);
+  } catch (e) { /* données corrompues : on repart de zéro */ }
+  document.getElementById('fxRate').value = state.fx;
+}
+
+function save() {
+  state.fx = parseFloat(document.getElementById('fxRate').value) || 0.95;
+  localStorage.setItem(STORE_KEY, JSON.stringify(state));
+}
+
+function fmt(n, cur) {
+  return new Intl.NumberFormat('fr-CH', { style: 'currency', currency: cur, maximumFractionDigits: 0 }).format(n);
+}
+
+function toCHF(value, cur) { return cur === 'CHF' ? value : value * state.fx; }
+function toEUR(value, cur) { return cur === 'EUR' ? value : value / state.fx; }
+
+function addAsset() {
+  const name = document.getElementById('fName').value.trim();
+  if (!name) { alert('Veuillez indiquer un nom.'); return; }
+  state.assets.push({
+    name,
+    cat: document.getElementById('fCat').value,
+    cur: document.getElementById('fCur').value,
+    value: parseFloat(document.getElementById('fVal').value) || 0,
+    growth: parseFloat(document.getElementById('fGrowth').value) || 0,
+    contrib: parseFloat(document.getElementById('fContrib').value) || 0,
+  });
+  document.getElementById('fName').value = '';
+  document.getElementById('fVal').value = '';
+  save(); render();
+}
+
+function removeAsset(i) {
+  if (confirm('Supprimer « ' + state.assets[i].name + ' » ?')) {
+    state.assets.splice(i, 1);
+    save(); render();
+  }
+}
+
+function updateAsset(i, field, value) {
+  state.assets[i][field] = (field === 'name' || field === 'cat' || field === 'cur') ? value : (parseFloat(value) || 0);
+  save(); render();
+}
+
+// Valeur projetée d'un actif après m mois : croissance composée + apports mensuels
+function projectAsset(a, months) {
+  const r = Math.pow(1 + a.growth / 100, 1 / 12) - 1;
+  let v = a.value;
+  for (let m = 0; m < months; m++) v = v * (1 + r) + a.contrib;
+  return v;
+}
+
+function render() {
+  const tbody = document.getElementById('assetBody');
+  tbody.innerHTML = '';
+  let totalCHF = 0;
+
+  state.assets.forEach((a, i) => {
+    totalCHF += toCHF(a.value, a.cur);
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td><input value="${a.name.replace(/"/g, '&quot;')}" style="width:100%;border:none;background:transparent" onchange="updateAsset(${i},'name',this.value)"></td>
+      <td><span class="cat-tag">${a.cat}</span></td>
+      <td>${a.cur === 'CHF' ? '🇨🇭 CHF' : '🇧🇪 EUR'}</td>
+      <td class="num"><input type="number" value="${a.value}" step="100" style="width:110px;border:none;background:transparent" onchange="updateAsset(${i},'value',this.value)"></td>
+      <td class="num"><input type="number" value="${a.growth}" step="0.1" style="width:70px;border:none;background:transparent" onchange="updateAsset(${i},'growth',this.value)"></td>
+      <td class="num"><input type="number" value="${a.contrib}" step="50" style="width:90px;border:none;background:transparent" onchange="updateAsset(${i},'contrib',this.value)"></td>
+      <td><button class="danger" title="Supprimer" onclick="removeAsset(${i})">×</button></td>`;
+    tbody.appendChild(tr);
+  });
+
+  document.getElementById('emptyMsg').style.display = state.assets.length ? 'none' : 'block';
+  document.getElementById('totalCHF').textContent = fmt(totalCHF, 'CHF');
+  document.getElementById('totalEUR').textContent = fmt(totalCHF / state.fx, 'EUR');
+  document.getElementById('countAssets').textContent = state.assets.length;
+
+  drawChart();
+}
+
+function drawChart() {
+  const years = parseInt(document.getElementById('years').value);
+  document.getElementById('yearsLabel').textContent = years;
+  const cur = document.getElementById('projCur').value;
+  const canvas = document.getElementById('chart');
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width, H = canvas.height;
+  ctx.clearRect(0, 0, W, H);
+
+  // Série annuelle du total converti dans la devise choisie
+  const series = [];
+  for (let y = 0; y <= years; y++) {
+    let total = 0;
+    state.assets.forEach(a => {
+      const v = projectAsset(a, y * 12);
+      total += cur === 'CHF' ? toCHF(v, a.cur) : toEUR(v, a.cur);
+    });
+    series.push(total);
+  }
+
+  const min = Math.min(0, ...series);
+  const max = Math.max(1, ...series);
+  const padL = 80, padR = 16, padT = 16, padB = 30;
+  const plotW = W - padL - padR, plotH = H - padT - padB;
+  const x = i => padL + (i / years) * plotW;
+  const yPos = v => padT + (1 - (v - min) / (max - min)) * plotH;
+
+  // Grille horizontale + axe des montants
+  ctx.font = '12px Georgia';
+  ctx.fillStyle = '#7a7668';
+  ctx.strokeStyle = '#e3dfd3';
+  for (let g = 0; g <= 4; g++) {
+    const v = min + (g / 4) * (max - min);
+    ctx.beginPath();
+    ctx.moveTo(padL, yPos(v));
+    ctx.lineTo(W - padR, yPos(v));
+    ctx.stroke();
+    ctx.textAlign = 'right';
+    ctx.fillText(Math.round(v / 1000) + ' k', padL - 8, yPos(v) + 4);
+  }
+  // Axe des années
+  ctx.textAlign = 'center';
+  const step = years > 20 ? 5 : years > 8 ? 2 : 1;
+  for (let yr = 0; yr <= years; yr += step) {
+    ctx.fillText(new Date().getFullYear() + yr, x(yr), H - 8);
+  }
+
+  // Courbe
+  ctx.beginPath();
+  series.forEach((v, i) => i === 0 ? ctx.moveTo(x(i), yPos(v)) : ctx.lineTo(x(i), yPos(v)));
+  ctx.strokeStyle = '#1f6f54';
+  ctx.lineWidth = 2.5;
+  ctx.stroke();
+
+  // Aire sous la courbe
+  ctx.lineTo(x(years), yPos(Math.max(0, min)));
+  ctx.lineTo(x(0), yPos(Math.max(0, min)));
+  ctx.closePath();
+  ctx.fillStyle = 'rgba(31,111,84,0.08)';
+  ctx.fill();
+
+  // Point final
+  ctx.beginPath();
+  ctx.arc(x(years), yPos(series[years]), 4, 0, Math.PI * 2);
+  ctx.fillStyle = '#b08d3e';
+  ctx.fill();
+
+  const start = series[0], end = series[years];
+  document.getElementById('projSummary').textContent =
+    state.assets.length === 0 ? '' :
+    `Aujourd'hui : ${fmt(start, cur)} → dans ${years} ans : ${fmt(end, cur)}` +
+    (start > 0 ? ` (×${(end / start).toFixed(2)})` : '');
+}
+
+function exportData() {
+  const blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'patrimoine-familial.json';
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+function importData(ev) {
+  const file = ev.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    try {
+      const data = JSON.parse(reader.result);
+      if (!Array.isArray(data.assets)) throw new Error();
+      state = data;
+      document.getElementById('fxRate').value = state.fx;
+      save(); render();
+    } catch (e) { alert('Fichier invalide.'); }
+  };
+  reader.readAsText(file);
+  ev.target.value = '';
+}
+
+load();
+render();
+</script>
+</body>
+</html>
