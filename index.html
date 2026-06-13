@@ -8,6 +8,8 @@
   :root{
     --bg:#050A14; --cyan:#00F5FF; --gold:#FFD700; --green:#00FF88; --red:#FF4444;
     --ink:#dbe9f4; --muted:#6b8299; --panel:rgba(10,22,38,0.55); --border:rgba(0,245,255,0.18);
+    --glow1:rgba(0,245,255,0.07); --glow2:rgba(255,215,0,0.05); --gridline:rgba(0,245,255,0.045);
+    --scrollthumb:rgba(0,245,255,0.25);
     --mono:ui-monospace,'SF Mono','Menlo','Consolas',monospace;
     --sans:system-ui,-apple-system,'Segoe UI',sans-serif;
   }
@@ -15,28 +17,37 @@
   html,body{min-height:100%;}
   body{
     background:
-      radial-gradient(ellipse at 50% 30%, rgba(0,245,255,0.07), transparent 60%),
-      radial-gradient(ellipse at 80% 90%, rgba(255,215,0,0.05), transparent 55%),
+      radial-gradient(ellipse at 50% 30%, var(--glow1), transparent 60%),
+      radial-gradient(ellipse at 80% 90%, var(--glow2), transparent 55%),
       var(--bg);
     color:var(--ink); font-family:var(--sans); overflow-x:hidden;
+    transition:background-color .5s ease, color .5s ease;
   }
   body::before{
     content:"";position:fixed;inset:0;pointer-events:none;z-index:0;
     background-image:
-      linear-gradient(rgba(0,245,255,0.045) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(0,245,255,0.045) 1px, transparent 1px);
+      linear-gradient(var(--gridline) 1px, transparent 1px),
+      linear-gradient(90deg, var(--gridline) 1px, transparent 1px);
     background-size:42px 42px;
     -webkit-mask-image:radial-gradient(ellipse at center, black 40%, transparent 95%);
     mask-image:radial-gradient(ellipse at center, black 40%, transparent 95%);
+    transition:background-image .5s ease;
   }
   .mono{font-family:var(--mono);}
   ::-webkit-scrollbar{width:7px;height:7px;}
-  ::-webkit-scrollbar-thumb{background:rgba(0,245,255,0.25);border-radius:8px;}
+  ::-webkit-scrollbar-thumb{background:var(--scrollthumb);border-radius:8px;}
   .glass{
     background:var(--panel);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
     border:1px solid var(--border);border-radius:14px;
     box-shadow:0 0 22px rgba(0,245,255,0.06), inset 0 0 30px rgba(0,245,255,0.03);
+    transition:background .5s ease, border-color .5s ease;
   }
+  #sparkleCanvas{position:fixed;inset:0;pointer-events:none;z-index:9999;}
+  #themeToggle{
+    border:1px solid var(--border);border-radius:10px;padding:6px 12px;font-size:11px;
+    letter-spacing:1px;color:var(--ink);background:var(--panel);transition:all .3s ease;
+  }
+  #themeToggle:hover{border-color:var(--gold);color:var(--gold);}
   button{font-family:var(--sans);cursor:pointer;color:var(--ink);border:none;background:none;}
   input[type=range]{accent-color:var(--cyan);width:100%;}
 
@@ -222,6 +233,45 @@ var ALERTS=[
   "🌍 Afrique : démographie portée par fintech &amp; énergies vertes"
 ];
 
+/* ===================== THÈMES ===================== */
+var THEMES={
+  neon:{
+    label:"✨ PASTEL",
+    vars:{
+      bg:"#050A14", ink:"#dbe9f4", muted:"#6b8299",
+      panel:"rgba(10,22,38,0.55)", border:"rgba(0,245,255,0.18)",
+      glow1:"rgba(0,245,255,0.07)", glow2:"rgba(255,215,0,0.05)",
+      gridline:"rgba(0,245,255,0.045)", scrollthumb:"rgba(0,245,255,0.25)"
+    },
+    colors:{green:"#00FF88",gold:"#FFD700",red:"#FF4444",cyan:"#00F5FF"}
+  },
+  pastel:{
+    label:"◎ NÉON",
+    vars:{
+      bg:"#FBF6FF", ink:"#4A4458", muted:"#9c93b3",
+      panel:"rgba(255,255,255,0.6)", border:"rgba(157,143,224,0.30)",
+      glow1:"rgba(157,143,224,0.16)", glow2:"rgba(244,184,96,0.16)",
+      gridline:"rgba(157,143,224,0.07)", scrollthumb:"rgba(157,143,224,0.35)"
+    },
+    colors:{green:"#6FCB9F",gold:"#F4B860",red:"#F2848B",cyan:"#9D8FE0"}
+  }
+};
+function applyTheme(name){
+  state.theme=name;
+  var t=THEMES[name],root=document.documentElement.style;
+  Object.keys(t.vars).forEach(function(k){root.setProperty("--"+k,t.vars[k]);});
+  Object.keys(t.colors).forEach(function(k){COLORS[k]=t.colors[k];});
+  RISK_BADGE.LOW[1]=COLORS.green; RISK_BADGE.MEDIUM[1]=COLORS.gold; RISK_BADGE.HIGH[1]=COLORS.red;
+  COMP_PAL[0]=COLORS.cyan; COMP_PAL[1]=COLORS.gold; COMP_PAL[2]=COLORS.green;
+  DATA.forEach(function(d){d.color=colorFor(d);});
+  document.documentElement.setAttribute("data-theme",name);
+  try{localStorage.setItem("radarTheme",name);}catch(e){}
+  var tb=document.getElementById("themeToggle");
+  if(tb) tb.textContent=THEMES[name].label;
+  buildRadarStatic();
+  render();
+}
+
 /* ===================== HELPERS RENDU ===================== */
 function trendOf(d){
   var s=scoreAtYear(d,state.year), s2=scoreAtYear(d,Math.min(2055,state.year+10));
@@ -270,6 +320,7 @@ function buildShell(){
       '<input type="range" min="2025" max="2055" step="1" id="yearSlider" value="'+state.year+'">'+
     '</div>'+
     '<div class="mono" id="clock" style="font-size:13px;color:var(--cyan);min-width:88px;text-align:right;text-shadow:0 0 8px rgba(0,245,255,.4);"></div>'+
+    '<button id="themeToggle" class="mono" data-theme-toggle></button>'+
   '</div>';
 
   var alerts=''+
@@ -341,8 +392,8 @@ function buildRadarStatic(){
   computeNodes();
   var cx=280,cy=280;
   var defs='<defs>'+
-    '<radialGradient id="core" cx="50%" cy="50%" r="50%"><stop offset="0%" stop-color="#00F5FF" stop-opacity="0.25"/><stop offset="100%" stop-color="#00F5FF" stop-opacity="0"/></radialGradient>'+
-    '<linearGradient id="sweepGrad" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#00F5FF" stop-opacity="0"/><stop offset="100%" stop-color="#00F5FF" stop-opacity="0.35"/></linearGradient>'+
+    '<radialGradient id="core" cx="50%" cy="50%" r="50%"><stop offset="0%" stop-color="'+COLORS.cyan+'" stop-opacity="0.25"/><stop offset="100%" stop-color="'+COLORS.cyan+'" stop-opacity="0"/></radialGradient>'+
+    '<linearGradient id="sweepGrad" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="'+COLORS.cyan+'" stop-opacity="0"/><stop offset="100%" stop-color="'+COLORS.cyan+'" stop-opacity="0.35"/></linearGradient>'+
     '</defs>';
   var halo='<circle cx="'+cx+'" cy="'+cy+'" r="90" fill="url(#core)"/>';
   var rings='<g id="rings"></g>';
@@ -516,8 +567,9 @@ function render(){
 }
 function bindEvents(){
   document.getElementById("app").addEventListener("click",function(e){
-    var t=e.target.closest("[data-select],[data-node],[data-filter],[data-sort],[data-comp-toggle],[data-comp-remove]");
+    var t=e.target.closest("[data-select],[data-node],[data-filter],[data-sort],[data-comp-toggle],[data-comp-remove],[data-theme-toggle]");
     if(!t) return;
+    if(t.hasAttribute("data-theme-toggle")){applyTheme(state.theme==="neon"?"pastel":"neon");return;}
     if(t.hasAttribute("data-filter")){state.filter=t.getAttribute("data-filter");render();return;}
     if(t.hasAttribute("data-sort")){state.sort=t.getAttribute("data-sort");render();return;}
     if(t.hasAttribute("data-comp-toggle")){toggleCompare(t.getAttribute("data-comp-toggle"));render();return;}
@@ -537,10 +589,58 @@ function toggleCompare(id){
   else if(state.compare.length<3) state.compare.push(id);
 }
 
+/* ===================== EFFET "MAIN DU PRINCE" (traînée dorée) ===================== */
+function initPrinceTouch(){
+  var canvas=document.createElement("canvas");
+  canvas.id="sparkleCanvas";
+  document.body.appendChild(canvas);
+  var ctx=canvas.getContext("2d"),particles=[];
+  if(!ctx) return;
+  function resize(){canvas.width=window.innerWidth;canvas.height=window.innerHeight;}
+  resize();
+  window.addEventListener("resize",resize);
+  function spawn(x,y){
+    for(var i=0;i<3;i++){
+      particles.push({
+        x:x+(Math.random()-0.5)*6, y:y+(Math.random()-0.5)*6,
+        vx:(Math.random()-0.5)*0.6, vy:-Math.random()*0.9-0.2,
+        life:1, decay:0.018+Math.random()*0.015, size:Math.random()*3+1.5,
+        col:Math.random()<0.5?"#FFD700":"#FFF3B0"
+      });
+    }
+  }
+  function onMove(e){
+    var x,y;
+    if(e.touches&&e.touches.length){x=e.touches[0].clientX;y=e.touches[0].clientY;}
+    else{x=e.clientX;y=e.clientY;}
+    spawn(x,y);
+  }
+  window.addEventListener("mousemove",onMove);
+  window.addEventListener("touchmove",onMove,{passive:true});
+  function tick(){
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    particles.forEach(function(p){
+      p.x+=p.vx; p.y+=p.vy; p.life-=p.decay;
+      ctx.globalAlpha=Math.max(0,p.life);
+      ctx.fillStyle=p.col; ctx.shadowColor=p.col; ctx.shadowBlur=8;
+      ctx.beginPath();
+      ctx.arc(p.x,p.y,Math.max(0,p.size*p.life),0,Math.PI*2);
+      ctx.fill();
+    });
+    ctx.globalAlpha=1; ctx.shadowBlur=0;
+    particles=particles.filter(function(p){return p.life>0;});
+    requestAnimationFrame(tick);
+  }
+  tick();
+}
+
 /* ===================== INIT ===================== */
 buildShell();
 bindEvents();
-render();
+var savedTheme="neon";
+try{savedTheme=localStorage.getItem("radarTheme")||"neon";}catch(e){}
+applyTheme(THEMES[savedTheme]?savedTheme:"neon");
+initPrinceTouch();
 setInterval(function(){var c=document.getElementById("clock");if(c)c.textContent=new Date().toLocaleTimeString("fr-FR");},1000);
 document.getElementById("clock").textContent=new Date().toLocaleTimeString("fr-FR");
 </script>
