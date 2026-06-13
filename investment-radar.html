@@ -1,0 +1,734 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Global Investment Radar 2025–2055</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#050A14;
+    --bg2:#081424;
+    --cyan:#00F5FF;
+    --gold:#FFD700;
+    --green:#00FF88;
+    --red:#FF4444;
+    --ink:#dbe9f4;
+    --muted:#6b8299;
+    --panel:rgba(10,22,38,0.55);
+    --border:rgba(0,245,255,0.18);
+    --mono:'JetBrains Mono',ui-monospace,monospace;
+    --sans:'Space Grotesk',system-ui,sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  html,body,#root{height:100%;}
+  body{
+    background:
+      radial-gradient(ellipse at 50% 30%, rgba(0,245,255,0.07), transparent 60%),
+      radial-gradient(ellipse at 80% 90%, rgba(255,215,0,0.05), transparent 55%),
+      var(--bg);
+    color:var(--ink);
+    font-family:var(--sans);
+    overflow:hidden;
+  }
+  /* grid overlay texture */
+  body::before{
+    content:"";position:fixed;inset:0;pointer-events:none;z-index:0;
+    background-image:
+      linear-gradient(rgba(0,245,255,0.045) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,245,255,0.045) 1px, transparent 1px);
+    background-size:42px 42px;
+    mask-image:radial-gradient(ellipse at center, black 40%, transparent 95%);
+  }
+  .mono{font-family:var(--mono);}
+  ::-webkit-scrollbar{width:8px;height:8px;}
+  ::-webkit-scrollbar-track{background:transparent;}
+  ::-webkit-scrollbar-thumb{background:rgba(0,245,255,0.25);border-radius:8px;}
+  ::-webkit-scrollbar-thumb:hover{background:rgba(0,245,255,0.45);}
+
+  .glass{
+    background:var(--panel);
+    backdrop-filter:blur(10px);
+    -webkit-backdrop-filter:blur(10px);
+    border:1px solid var(--border);
+    border-radius:14px;
+    box-shadow:0 0 22px rgba(0,245,255,0.06), inset 0 0 30px rgba(0,245,255,0.03);
+  }
+  .glow-cyan{box-shadow:0 0 14px rgba(0,245,255,0.45);}
+  button{font-family:var(--sans);cursor:pointer;color:var(--ink);}
+  input[type=range]{accent-color:var(--cyan);}
+
+  @keyframes pulse{
+    0%{transform:scale(1);opacity:.9;}
+    50%{transform:scale(1.5);opacity:.15;}
+    100%{transform:scale(1);opacity:.9;}
+  }
+  @keyframes sweep{
+    from{transform:rotate(0deg);}
+    to{transform:rotate(360deg);}
+  }
+  @keyframes blink{50%{opacity:.35;}}
+  @keyframes marquee{
+    from{transform:translateX(0);}
+    to{transform:translateX(-50%);}
+  }
+  .blink{animation:blink 1.4s steps(2) infinite;}
+</style>
+<script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+</head>
+<body>
+<div id="root"></div>
+
+<script type="text/babel">
+const { useState, useEffect, useMemo, useRef } = React;
+
+/* =========================================================
+   DONNÉES — 21 destinations, projections réalistes 2025–2055
+   ========================================================= */
+const COLORS = { green:"#00FF88", gold:"#FFD700", red:"#FF4444", cyan:"#00F5FF" };
+
+// horizon = année de potentiel maximal (détermine l'anneau du radar)
+const RAW = [
+  // TIER 1 — STABLE & FORTE CROISSANCE
+  {id:"sg", name:"Singapour", country:"Singapour", flag:"🇸🇬", type:"city", cat:"stable", region:"Asie du Sud-Est",
+   score:94, gdpGrowth:4.2, stability:97, infra:96, innov:93, reYield:3.6, popGrowth:1.1, horizon:2025,
+   risk:"LOW", sectors:["Tech","Finance","Biotech","RE"],
+   why:["Hub financier asiatique avec fiscalité attractive et État de droit solide","Écosystème tech et deep-tech parmi les plus denses au monde","Stabilité politique quasi parfaite, monnaie forte"]},
+  {id:"dxb", name:"Dubaï", country:"Émirats Arabes Unis", flag:"🇦🇪", type:"city", cat:"stable", region:"Golfe",
+   score:91, gdpGrowth:5.1, stability:88, infra:94, innov:84, reYield:6.8, popGrowth:2.4, horizon:2030,
+   risk:"LOW", sectors:["RE","Finance","Tourisme","Énergie"],
+   why:["Zéro impôt sur le revenu et afflux massif de capitaux et talents","Diversification hors pétrole réussie (tech, logistique, tourisme)","Rendements immobiliers élevés et croissance démographique soutenue"]},
+  {id:"zrh", name:"Zurich", country:"Suisse", flag:"🇨🇭", type:"city", cat:"stable", region:"Europe",
+   score:89, gdpGrowth:2.8, stability:99, infra:97, innov:91, reYield:2.4, popGrowth:0.7, horizon:2025,
+   risk:"LOW", sectors:["Finance","Pharma","Tech","RE"],
+   why:["Valeur refuge absolue, franc suisse et secret bancaire institutionnel","Stabilité politique et juridique inégalée","Pôle pharma et fintech de premier plan"]},
+  {id:"yto", name:"Toronto", country:"Canada", flag:"🇨🇦", type:"city", cat:"stable", region:"Amérique du Nord",
+   score:87, gdpGrowth:3.4, stability:95, infra:90, innov:88, reYield:4.1, popGrowth:1.6, horizon:2030,
+   risk:"LOW", sectors:["Tech","Finance","RE","Énergie"],
+   why:["Immigration qualifiée massive dopant la demande et l'innovation","Marché nord-américain stable et institutions robustes","Pôle IA mondial (Vector Institute) en pleine expansion"]},
+  {id:"ams", name:"Amsterdam", country:"Pays-Bas", flag:"🇳🇱", type:"city", cat:"stable", region:"Europe",
+   score:85, gdpGrowth:2.9, stability:96, infra:95, innov:89, reYield:3.5, popGrowth:0.9, horizon:2025,
+   risk:"LOW", sectors:["Tech","Finance","Logistique","RE"],
+   why:["Porte d'entrée de l'Europe et hub logistique majeur","Fiscalité d'entreprise compétitive, écosystème scale-up dense","Transition énergétique et infrastructure de classe mondiale"]},
+
+  // TIER 2 — ÉMERGENTS À FORT POTENTIEL
+  {id:"hcm", name:"Hô-Chi-Minh-Ville", country:"Vietnam", flag:"🇻🇳", type:"city", cat:"emerging", region:"Asie du Sud-Est",
+   score:88, gdpGrowth:6.8, stability:74, infra:71, innov:70, reYield:7.2, popGrowth:1.4, horizon:2045,
+   risk:"MEDIUM", sectors:["Manufacture","Tech","RE","Énergie"],
+   why:["Grand gagnant du recentrage des chaînes d'approvisionnement (China+1)","Démographie jeune et urbanisation rapide","Coûts faibles et exportations en forte hausse"]},
+  {id:"blr", name:"Bangalore", country:"Inde", flag:"🇮🇳", type:"city", cat:"emerging", region:"Asie du Sud",
+   score:86, gdpGrowth:7.2, stability:72, infra:68, innov:85, reYield:6.5, popGrowth:1.8, horizon:2045,
+   risk:"MEDIUM", sectors:["Tech","SaaS","Biotech","RE"],
+   why:["Silicon Valley indienne : capitale mondiale des services IT","Classe moyenne et consommation en explosion","Vivier de talents ingénieurs inégalé"]},
+  {id:"nbo", name:"Nairobi", country:"Kenya", flag:"🇰🇪", type:"city", cat:"emerging", region:"Afrique de l'Est",
+   score:76, gdpGrowth:5.9, stability:65, infra:58, innov:67, reYield:8.1, popGrowth:2.6, horizon:2055,
+   risk:"MEDIUM", sectors:["Fintech","Énergie","Agri","Télécom"],
+   why:["« Silicon Savannah » : leader africain de la fintech mobile","Hub régional pour l'Afrique de l'Est","Énergies renouvelables et démographie très dynamique"]},
+  {id:"ruh", name:"Riyad", country:"Arabie Saoudite", flag:"🇸🇦", type:"city", cat:"emerging", region:"Golfe",
+   score:82, gdpGrowth:4.8, stability:79, infra:82, innov:73, reYield:6.0, popGrowth:2.1, horizon:2035,
+   risk:"MEDIUM", sectors:["Énergie","RE","Tech","Tourisme"],
+   why:["Vision 2030 : 1 000 Md$ de méga-projets (NEOM, Qiddiya)","Diversification post-pétrole financée par le fonds souverain PIF","Ouverture économique et afflux d'investissements directs"]},
+  {id:"jkt", name:"Jakarta", country:"Indonésie", flag:"🇮🇩", type:"city", cat:"emerging", region:"Asie du Sud-Est",
+   score:78, gdpGrowth:5.3, stability:71, infra:64, innov:66, reYield:7.0, popGrowth:1.9, horizon:2045,
+   risk:"MEDIUM", sectors:["Manufacture","Numérique","Matières 1ères","RE"],
+   why:["4e pays le plus peuplé, économie numérique en plein boom","Réserves clés pour la transition (nickel, batteries)","Classe moyenne en forte croissance"]},
+
+  // TIER 3 — MODÉRÉS
+  {id:"waw", name:"Varsovie", country:"Pologne", flag:"🇵🇱", type:"city", cat:"stable", region:"Europe",
+   score:80, gdpGrowth:3.8, stability:82, infra:84, innov:76, reYield:5.4, popGrowth:0.4, horizon:2030,
+   risk:"MEDIUM", sectors:["Tech","Manufacture","Finance","RE"],
+   why:["Économie la plus dynamique d'Europe centrale","Nearshoring et fonds européens massifs","Coûts compétitifs avec accès au marché UE"]},
+  {id:"lis", name:"Lisbonne", country:"Portugal", flag:"🇵🇹", type:"city", cat:"stable", region:"Europe",
+   score:79, gdpGrowth:3.1, stability:85, infra:81, innov:74, reYield:5.0, popGrowth:0.6, horizon:2030,
+   risk:"LOW", sectors:["Tech","Tourisme","RE","Énergie"],
+   why:["Aimant pour nomades digitaux et startups (Web Summit)","Qualité de vie et fiscalité attractive pour expatriés","Immobilier encore abordable à l'échelle ouest-européenne"]},
+  {id:"mex", name:"Mexico", country:"Mexique", flag:"🇲🇽", type:"city", cat:"emerging", region:"Amérique latine",
+   score:72, gdpGrowth:3.6, stability:66, infra:70, innov:62, reYield:6.7, popGrowth:1.0, horizon:2035,
+   risk:"MEDIUM", sectors:["Manufacture","Logistique","RE","Auto"],
+   why:["Champion du nearshoring vers les États-Unis","Intégration profonde à la chaîne industrielle nord-américaine","Marché intérieur vaste et jeune"]},
+  {id:"cmn", name:"Casablanca", country:"Maroc", flag:"🇲🇦", type:"city", cat:"emerging", region:"Afrique du Nord",
+   score:70, gdpGrowth:4.1, stability:68, infra:69, innov:60, reYield:6.9, popGrowth:1.2, horizon:2045,
+   risk:"MEDIUM", sectors:["Finance","Énergie","Auto","RE"],
+   why:["Hub financier (CFC) tourné vers l'Afrique francophone","Industrie automobile et aéronautique en plein essor","Leader des renouvelables (solaire) au Maghreb"]},
+  {id:"mnl", name:"Manille", country:"Philippines", flag:"🇵🇭", type:"city", cat:"emerging", region:"Asie du Sud-Est",
+   score:74, gdpGrowth:5.7, stability:63, infra:60, innov:64, reYield:7.4, popGrowth:1.7, horizon:2045,
+   risk:"MEDIUM", sectors:["BPO","Numérique","RE","Conso"],
+   why:["Capitale mondiale de l'externalisation (BPO)","Population jeune et anglophone, envois de fonds élevés","Consommation intérieure robuste"]},
+
+  // TIER 4 — RISQUE ÉLEVÉ / À SURVEILLER
+  {id:"bue", name:"Buenos Aires", country:"Argentine", flag:"🇦🇷", type:"city", cat:"emerging", region:"Amérique latine",
+   score:45, gdpGrowth:1.2, stability:38, infra:62, innov:61, reYield:4.0, popGrowth:0.9, horizon:2055,
+   risk:"HIGH", sectors:["Agri","Énergie","Tech"],
+   why:["Pari sur un redressement post-réformes (Vaca Muerta, lithium)","Actifs très décotés pour investisseurs tolérants au risque","Talent tech reconnu et exportations agricoles"]},
+  {id:"ccs", name:"Caracas", country:"Venezuela", flag:"🇻🇪", type:"city", cat:"emerging", region:"Amérique latine",
+   score:22, gdpGrowth:-2.1, stability:18, infra:34, innov:30, reYield:3.0, popGrowth:-0.5, horizon:2055,
+   risk:"HIGH", sectors:["Énergie"],
+   why:["Premières réserves de pétrole prouvées au monde","Optionnalité extrême en cas de normalisation politique","Réservé aux profils spéculatifs / distressed"]},
+  {id:"los", name:"Lagos", country:"Nigéria", flag:"🇳🇬", type:"city", cat:"emerging", region:"Afrique de l'Ouest",
+   score:58, gdpGrowth:4.8, stability:42, infra:48, innov:63, reYield:8.5, popGrowth:3.1, horizon:2055,
+   risk:"HIGH", sectors:["Fintech","Énergie","Conso","Télécom"],
+   why:["Plus grande mégapole d'Afrique, démographie explosive","Scène fintech la plus financée du continent","Marché de consommation gigantesque à long terme"]},
+
+  // Ajouts pour dépasser 20 destinations
+  {id:"tll", name:"Tallinn", country:"Estonie", flag:"🇪🇪", type:"city", cat:"stable", region:"Europe",
+   score:81, gdpGrowth:3.5, stability:86, infra:88, innov:90, reYield:5.1, popGrowth:0.3, horizon:2030,
+   risk:"LOW", sectors:["Tech","E-gov","Finance"],
+   why:["Pays le plus numérisé d'Europe (e-résidence, e-gov)","Densité record de licornes par habitant","Cadre réglementaire crypto et fintech avant-gardiste"]},
+  {id:"aus", name:"Austin", country:"États-Unis", flag:"🇺🇸", type:"city", cat:"stable", region:"Amérique du Nord",
+   score:83, gdpGrowth:3.9, stability:90, infra:87, innov:88, reYield:4.8, popGrowth:2.0, horizon:2030,
+   risk:"LOW", sectors:["Tech","Énergie","RE","Semi"],
+   why:["Nouveau pôle tech US (Tesla, Oracle, semi-conducteurs)","Migration interne forte, fiscalité avantageuse (Texas)","Croissance démographique parmi les plus rapides des USA"]},
+];
+
+const YEARS = [2025, 2030, 2035, 2045, 2055];
+
+function colorFor(d){
+  if(d.score < 50 || d.stability < 45) return "red";
+  if(d.stability >= 84 && d.gdpGrowth >= 0) return "green";
+  return "gold";
+}
+
+// Construit une projection PIB indexée (base 100 en 2025) sur 30 ans
+function buildProjection(d){
+  const pts=[]; let v=100;
+  for(let y=2025; y<=2055; y++){
+    const t=y-2025;
+    // léger amortissement de la croissance dans le temps + bruit déterministe
+    const decay = 1 - Math.min(0.45, t*0.012);
+    const noise = Math.sin((t+ d.id.charCodeAt(0)) * 0.9) * (Math.abs(d.gdpGrowth)*0.12);
+    const g = (d.gdpGrowth*decay + noise)/100;
+    v = v * (1 + g);
+    pts.push({year:y, value:Math.max(40, v)});
+  }
+  return pts;
+}
+
+const DATA = RAW.map(d=>{
+  const proj = buildProjection(d);
+  const final = proj[proj.length-1].value;
+  return {...d, color:colorFor(d), proj, proj30: Math.round(final-100)};
+});
+
+// Score projeté pour une année donnée (interpolation simple basée sur la croissance)
+function scoreAtYear(d, year){
+  const t = year-2025;
+  // marchés émergents montent, marchés à risque divergent
+  const trendBoost = d.cat==="emerging" ? (d.gdpGrowth-3)*0.55 : (d.gdpGrowth-2.5)*0.18;
+  const riskDrag = d.stability<45 ? -(t*0.25) : 0;
+  let s = d.score + (t/30)*(trendBoost*30) + riskDrag;
+  return Math.max(0, Math.min(100, Math.round(s)));
+}
+
+/* =========================================================
+   PETITS COMPOSANTS UI
+   ========================================================= */
+function metricList(d){
+  return [
+    {key:"gdpGrowth", label:"Croissance PIB", val:d.gdpGrowth, norm:Math.min(100,(d.gdpGrowth+3)/11*100), unit:"%"},
+    {key:"stability", label:"Stabilité politique", val:d.stability, norm:d.stability, unit:"/100"},
+    {key:"infra", label:"Infrastructure", val:d.infra, norm:d.infra, unit:"/100"},
+    {key:"innov", label:"Indice d'innovation", val:d.innov, norm:d.innov, unit:"/100"},
+    {key:"reYield", label:"Rendement immobilier", val:d.reYield, norm:Math.min(100,d.reYield/10*100), unit:"%"},
+    {key:"popGrowth", label:"Croissance démog.", val:d.popGrowth, norm:Math.min(100,(d.popGrowth+1)/4*100), unit:"%"},
+  ];
+}
+
+function CircularScore({value, color}){
+  const r=46, c=2*Math.PI*r;
+  const [disp,setDisp]=useState(0);
+  useEffect(()=>{
+    let raf, start;
+    const dur=900;
+    const step=(ts)=>{ if(!start) start=ts; const p=Math.min(1,(ts-start)/dur);
+      setDisp(Math.round(value*(1-Math.pow(1-p,3)))); if(p<1) raf=requestAnimationFrame(step); };
+    raf=requestAnimationFrame(step); return ()=>cancelAnimationFrame(raf);
+  },[value]);
+  const off = c*(1-disp/100);
+  return (
+    <svg width="120" height="120" viewBox="0 0 120 120">
+      <circle cx="60" cy="60" r={r} fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth="9"/>
+      <circle cx="60" cy="60" r={r} fill="none" stroke={color} strokeWidth="9" strokeLinecap="round"
+        strokeDasharray={c} strokeDashoffset={off} transform="rotate(-90 60 60)"
+        style={{filter:`drop-shadow(0 0 6px ${color})`, transition:"stroke-dashoffset .1s linear"}}/>
+      <text x="60" y="58" textAnchor="middle" fontFamily="var(--mono)" fontSize="30" fontWeight="700" fill={color}>{disp}</text>
+      <text x="60" y="78" textAnchor="middle" fontFamily="var(--mono)" fontSize="11" fill="#6b8299">/ 100</text>
+    </svg>
+  );
+}
+
+function Bar({label,val,norm,unit,color}){
+  return (
+    <div style={{marginBottom:10}}>
+      <div style={{display:"flex",justifyContent:"space-between",fontSize:12,marginBottom:4}}>
+        <span style={{color:"#9fb4c7"}}>{label}</span>
+        <span className="mono" style={{color}}>{val}{unit}</span>
+      </div>
+      <div style={{height:7,background:"rgba(255,255,255,0.07)",borderRadius:6,overflow:"hidden"}}>
+        <div style={{width:`${norm}%`,height:"100%",background:`linear-gradient(90deg,${color}55,${color})`,
+          borderRadius:6,boxShadow:`0 0 8px ${color}`, transition:"width .8s cubic-bezier(.2,.8,.2,1)"}}/>
+      </div>
+    </div>
+  );
+}
+
+function LineChart({proj, color}){
+  const W=300,H=110,pad=8;
+  const vals=proj.map(p=>p.value);
+  const min=Math.min(...vals), max=Math.max(...vals);
+  const x=i=> pad + i*(W-2*pad)/(proj.length-1);
+  const y=v=> H-pad - (v-min)/((max-min)||1)*(H-2*pad);
+  const pts=proj.map((p,i)=>`${x(i)},${y(p.value)}`).join(" ");
+  const area=`${pad},${H-pad} ${pts} ${W-pad},${H-pad}`;
+  return (
+    <svg width="100%" viewBox={`0 0 ${W} ${H}`} style={{display:"block"}}>
+      <defs>
+        <linearGradient id="lg" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor={color} stopOpacity="0.35"/>
+          <stop offset="100%" stopColor={color} stopOpacity="0"/>
+        </linearGradient>
+      </defs>
+      {[0,0.5,1].map((g,i)=><line key={i} x1={pad} x2={W-pad} y1={pad+g*(H-2*pad)} y2={pad+g*(H-2*pad)} stroke="rgba(255,255,255,0.06)"/>)}
+      <polygon points={area} fill="url(#lg)"/>
+      <polyline points={pts} fill="none" stroke={color} strokeWidth="2" style={{filter:`drop-shadow(0 0 4px ${color})`}}/>
+      {proj.filter((_,i)=>i%5===0).map((p,i)=>(
+        <g key={i}>
+          <circle cx={x(proj.indexOf(p))} cy={y(p.value)} r="2.5" fill={color}/>
+          <text x={x(proj.indexOf(p))} y={H-1} fontSize="8" textAnchor="middle" fill="#6b8299" fontFamily="var(--mono)">{p.year}</text>
+        </g>
+      ))}
+    </svg>
+  );
+}
+
+function RiskBadge({risk}){
+  const map={LOW:{c:COLORS.green,t:"RISQUE FAIBLE"},MEDIUM:{c:COLORS.gold,t:"RISQUE MODÉRÉ"},HIGH:{c:COLORS.red,t:"RISQUE ÉLEVÉ"}};
+  const m=map[risk];
+  return <span className="mono" style={{padding:"4px 10px",borderRadius:20,fontSize:11,fontWeight:700,
+    color:m.c,border:`1px solid ${m.c}`,background:`${m.c}1a`,letterSpacing:1}}>{m.t}</span>;
+}
+
+/* =========================================================
+   RADAR CENTRAL (SVG animé)
+   ========================================================= */
+function RadarMap({year, selected, hovered, onHover, onSelect}){
+  const VB=560, cx=VB/2, cy=VB/2;
+  const ringR=[60,110,165,220,255];
+  const nodes=useMemo(()=>{
+    // regroupe par horizon -> anneau ; angle réparti dans le groupe
+    const byRing={};
+    YEARS.forEach((y,i)=>byRing[y]=[]);
+    DATA.forEach(d=>byRing[d.horizon].push(d));
+    const out=[];
+    YEARS.forEach((y,ri)=>{
+      const grp=byRing[y]; const n=grp.length;
+      grp.forEach((d,gi)=>{
+        const ang = (gi/n)*Math.PI*2 + ri*0.6 - Math.PI/2;
+        const r=ringR[ri];
+        out.push({...d, x:cx+Math.cos(ang)*r, y:cy+Math.sin(ang)*r, ring:ri});
+      });
+    });
+    return out;
+  },[]);
+  const activeRing = YEARS.reduce((acc,y,i)=> year>=y?i:acc, 0);
+
+  return (
+    <svg width="100%" height="100%" viewBox={`0 0 ${VB} ${VB}`} style={{maxHeight:"100%"}}>
+      <defs>
+        <radialGradient id="core" cx="50%" cy="50%" r="50%">
+          <stop offset="0%" stopColor="#00F5FF" stopOpacity="0.25"/>
+          <stop offset="100%" stopColor="#00F5FF" stopOpacity="0"/>
+        </radialGradient>
+        <linearGradient id="sweepGrad" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0%" stopColor="#00F5FF" stopOpacity="0"/>
+          <stop offset="100%" stopColor="#00F5FF" stopOpacity="0.35"/>
+        </linearGradient>
+      </defs>
+
+      {/* halo central */}
+      <circle cx={cx} cy={cy} r="90" fill="url(#core)"/>
+
+      {/* anneaux temporels */}
+      {ringR.map((r,i)=>(
+        <g key={i}>
+          <circle cx={cx} cy={cy} r={r} fill="none"
+            stroke={i===activeRing?COLORS.cyan:"rgba(0,245,255,0.18)"}
+            strokeWidth={i===activeRing?1.6:1}
+            strokeDasharray={i===activeRing?"none":"3 6"}
+            style={i===activeRing?{filter:"drop-shadow(0 0 4px #00F5FF)"}:{}}/>
+          <text x={cx} y={cy-r-3} textAnchor="middle" className="mono"
+            fontSize="11" fill={i===activeRing?COLORS.cyan:"#6b8299"} fontWeight="700">{YEARS[i]}</text>
+        </g>
+      ))}
+
+      {/* lignes radiales */}
+      {[0,1,2,3,4,5,6,7].map(i=>{
+        const a=i/8*Math.PI*2; return <line key={i} x1={cx} y1={cy}
+          x2={cx+Math.cos(a)*ringR[4]} y2={cy+Math.sin(a)*ringR[4]}
+          stroke="rgba(0,245,255,0.08)" strokeWidth="1"/>;
+      })}
+
+      {/* balayage radar */}
+      <g style={{transformOrigin:`${cx}px ${cy}px`, animation:"sweep 8s linear infinite"}}>
+        <polygon points={`${cx},${cy} ${cx+ringR[4]},${cy-30} ${cx+ringR[4]},${cy+30}`} fill="url(#sweepGrad)"/>
+        <line x1={cx} y1={cy} x2={cx+ringR[4]} y2={cy} stroke={COLORS.cyan} strokeWidth="1.5" opacity="0.5"/>
+      </g>
+
+      {/* nœuds */}
+      {nodes.map(d=>{
+        const col=COLORS[d.color];
+        const isSel=selected===d.id, isHov=hovered===d.id;
+        const sz = isSel?9 : isHov?8 : 5.5;
+        return (
+          <g key={d.id} style={{cursor:"pointer"}}
+             onMouseEnter={()=>onHover(d.id)} onMouseLeave={()=>onHover(null)}
+             onClick={()=>onSelect(d.id)}>
+            <circle cx={d.x} cy={d.y} r="11" fill={col} opacity="0.5"
+              style={{transformOrigin:`${d.x}px ${d.y}px`, animation:`pulse ${2+ (d.score%5)*0.3}s ease-in-out infinite`}}/>
+            <circle cx={d.x} cy={d.y} r={sz} fill={col}
+              stroke={isSel?"#fff":col} strokeWidth={isSel?2:0}
+              style={{filter:`drop-shadow(0 0 ${isSel?10:5}px ${col})`, transition:"r .15s"}}/>
+            {(isHov||isSel) && (
+              <text x={d.x} y={d.y-14} textAnchor="middle" className="mono" fontSize="10"
+                fill="#fff" fontWeight="700" style={{pointerEvents:"none"}}>{d.flag} {d.name}</text>
+            )}
+          </g>
+        );
+      })}
+    </svg>
+  );
+}
+
+/* =========================================================
+   RADAR DE COMPARAISON (hexagone 6 métriques)
+   ========================================================= */
+function CompareRadar({items}){
+  const W=240,cx=120,cy=120,R=88;
+  const axes=["Croiss.","Stabilité","Infra","Innov.","Immo.","Démo."];
+  const norm=(d)=>metricList(d).map(m=>m.norm/100);
+  const palette=[COLORS.cyan, COLORS.gold, COLORS.green];
+  const pt=(i,r)=>{ const a=i/6*Math.PI*2 - Math.PI/2;
+    return [cx+Math.cos(a)*R*r, cy+Math.sin(a)*R*r]; };
+  return (
+    <svg width={W} height={W} viewBox={`0 0 ${W} ${W}`}>
+      {[0.25,0.5,0.75,1].map((g,i)=>(
+        <polygon key={i} points={axes.map((_,j)=>pt(j,g).join(",")).join(" ")}
+          fill="none" stroke="rgba(0,245,255,0.12)"/>
+      ))}
+      {axes.map((a,i)=>{
+        const [ex,ey]=pt(i,1.0); const [lx,ly]=pt(i,1.18);
+        return <g key={i}>
+          <line x1={cx} y1={cy} x2={ex} y2={ey} stroke="rgba(0,245,255,0.12)"/>
+          <text x={lx} y={ly} textAnchor="middle" fontSize="9" fill="#6b8299" className="mono">{a}</text>
+        </g>;
+      })}
+      {items.map((d,k)=>{
+        const v=norm(d); const col=palette[k];
+        const poly=v.map((val,i)=>pt(i,val).join(",")).join(" ");
+        return <polygon key={d.id} points={poly} fill={`${col}22`} stroke={col} strokeWidth="2"
+          style={{filter:`drop-shadow(0 0 4px ${col})`}}/>;
+      })}
+    </svg>
+  );
+}
+
+/* =========================================================
+   APP
+   ========================================================= */
+function App(){
+  const [year,setYear]=useState(2025);
+  const [selected,setSelected]=useState("sg");
+  const [hovered,setHovered]=useState(null);
+  const [filter,setFilter]=useState("ALL");
+  const [sort,setSort]=useState("score");
+  const [compare,setCompare]=useState(["sg","hcm"]);
+  const [clock,setClock]=useState(new Date());
+
+  useEffect(()=>{ const t=setInterval(()=>setClock(new Date()),1000); return ()=>clearInterval(t); },[]);
+
+  const sel = DATA.find(d=>d.id===selected);
+
+  const ranked = useMemo(()=>{
+    let list=DATA.map(d=>({...d, liveScore:scoreAtYear(d,year)}));
+    if(filter==="CITIES") list=list.filter(d=>d.type==="city");
+    if(filter==="COUNTRIES") list=list.filter(d=>d.type==="country");
+    if(filter==="EMERGING") list=list.filter(d=>d.cat==="emerging");
+    if(filter==="STABLE") list=list.filter(d=>d.cat==="stable");
+    const cmp={
+      score:(a,b)=>b.liveScore-a.liveScore,
+      gdp:(a,b)=>b.gdpGrowth-a.gdpGrowth,
+      stability:(a,b)=>b.stability-a.stability,
+      proj:(a,b)=>b.proj30-a.proj30,
+    }[sort];
+    return list.sort(cmp).slice(0,20);
+  },[filter,sort,year]);
+
+  const trend=(d)=>{ const s=scoreAtYear(d,year), s2=scoreAtYear(d,Math.min(2055,year+10));
+    if(s2-s>2) return {a:"↑",c:COLORS.green}; if(s2-s<-2) return {a:"↓",c:COLORS.red}; return {a:"→",c:"#6b8299"}; };
+
+  // état économique global dérivé de l'année
+  const globalState = year<2032?{t:"STABLE",c:COLORS.cyan}: year<2045?{t:"CROISSANCE",c:COLORS.green}:{t:"VOLATIL",c:COLORS.gold};
+  const globalGdp = (3.1 + (year-2025)*0.02 + Math.sin(year)*0.3).toFixed(1);
+
+  const alerts=[
+    "⚡ Boom IA : croissance Asie du Sud-Est +12%",
+    "🛢️ Transition énergétique : Golfe diversifie hors pétrole",
+    "🏭 Nearshoring : Mexique & Vietnam captent les chaînes d'appro.",
+    "💱 Argentine : réformes structurelles surveillées de près",
+    "🌍 Afrique : démographie portée par fintech & énergies vertes",
+  ];
+
+  const toggleCompare=(id)=>{
+    setCompare(prev=> prev.includes(id) ? prev.filter(x=>x!==id) : (prev.length<3?[...prev,id]:prev));
+  };
+  const compareItems = compare.map(id=>DATA.find(d=>d.id===id)).filter(Boolean);
+  const bestLongTerm = compareItems.length
+    ? compareItems.slice().sort((a,b)=>b.proj30-a.proj30)[0] : null;
+
+  const FILTERS=[["ALL","TOUT"],["CITIES","VILLES"],["COUNTRIES","PAYS"],["EMERGING","ÉMERGENTS"],["STABLE","STABLES"]];
+  const SORTS=[["score","Score"],["gdp","Croissance"],["stability","Stabilité"],["proj","Projection 30A"]];
+
+  return (
+    <div style={{position:"relative",zIndex:1,height:"100vh",display:"flex",flexDirection:"column",padding:10,gap:10}}>
+
+      {/* ===== TOP BAR ===== */}
+      <div className="glass" style={{padding:"10px 16px",display:"flex",alignItems:"center",gap:18,flexWrap:"wrap"}}>
+        <div style={{display:"flex",flexDirection:"column"}}>
+          <span style={{fontSize:17,fontWeight:700,letterSpacing:1,color:COLORS.cyan,textShadow:"0 0 10px rgba(0,245,255,.5)"}}>
+            ◎ GLOBAL INVESTMENT RADAR</span>
+          <span className="mono" style={{fontSize:10,color:"#6b8299",letterSpacing:2}}>SIMULATION MONDIALE 2025 → 2055</span>
+        </div>
+
+        <div style={{display:"flex",alignItems:"center",gap:8,padding:"5px 12px",borderRadius:10,
+          border:`1px solid ${globalState.c}55`,background:`${globalState.c}12`}}>
+          <span className="blink" style={{width:8,height:8,borderRadius:8,background:globalState.c,boxShadow:`0 0 8px ${globalState.c}`}}/>
+          <span className="mono" style={{fontSize:12,color:globalState.c,fontWeight:700}}>ÉTAT : {globalState.t}</span>
+        </div>
+
+        <div className="mono" style={{fontSize:12,color:"#9fb4c7"}}>
+          PIB MONDIAL <span style={{color:COLORS.green,fontWeight:700}}>+{globalGdp}%</span>
+        </div>
+
+        {/* curseur année */}
+        <div style={{display:"flex",alignItems:"center",gap:10,flex:1,minWidth:240}}>
+          <span className="mono" style={{fontSize:13,color:COLORS.gold,fontWeight:700,minWidth:42}}>{year}</span>
+          <input type="range" min="2025" max="2055" step="1" value={year}
+            onChange={e=>setYear(+e.target.value)} style={{flex:1}}/>
+        </div>
+
+        <div className="mono" style={{fontSize:13,color:COLORS.cyan,minWidth:88,textAlign:"right",
+          textShadow:"0 0 8px rgba(0,245,255,.4)"}}>
+          {clock.toLocaleTimeString("fr-FR")}</div>
+      </div>
+
+      {/* bandeau alertes */}
+      <div className="glass" style={{padding:"6px 0",overflow:"hidden",whiteSpace:"nowrap"}}>
+        <div style={{display:"inline-flex",gap:40,animation:"marquee 28s linear infinite",paddingLeft:20}}>
+          {[...alerts,...alerts].map((a,i)=>(
+            <span key={i} className="mono" style={{fontSize:12,color:"#9fb4c7"}}>{a}</span>
+          ))}
+        </div>
+      </div>
+
+      {/* ===== CORPS : 3 colonnes ===== */}
+      <div style={{flex:1,display:"flex",gap:10,minHeight:0}}>
+
+        {/* --- GAUCHE : CLASSEMENT --- */}
+        <div className="glass" style={{width:330,display:"flex",flexDirection:"column",padding:12,minHeight:0}}>
+          <div style={{fontSize:13,fontWeight:700,color:COLORS.cyan,letterSpacing:1,marginBottom:8}}>▣ CLASSEMENT — TOP 20</div>
+          <div style={{display:"flex",flexWrap:"wrap",gap:4,marginBottom:8}}>
+            {FILTERS.map(([k,l])=>(
+              <button key={k} onClick={()=>setFilter(k)} className="mono"
+                style={{fontSize:10,padding:"4px 8px",borderRadius:7,letterSpacing:.5,
+                  border:`1px solid ${filter===k?COLORS.cyan:"rgba(0,245,255,.2)"}`,
+                  background:filter===k?"rgba(0,245,255,.15)":"transparent",
+                  color:filter===k?COLORS.cyan:"#9fb4c7"}}>{l}</button>
+            ))}
+          </div>
+          <div style={{display:"flex",gap:4,marginBottom:8,alignItems:"center"}}>
+            <span className="mono" style={{fontSize:10,color:"#6b8299"}}>TRI:</span>
+            {SORTS.map(([k,l])=>(
+              <button key={k} onClick={()=>setSort(k)} className="mono"
+                style={{fontSize:10,padding:"3px 6px",borderRadius:6,
+                  border:"none",background:"transparent",
+                  color:sort===k?COLORS.gold:"#6b8299",
+                  textDecoration:sort===k?"underline":"none",fontWeight:sort===k?700:400}}>{l}</button>
+            ))}
+          </div>
+          <div style={{overflowY:"auto",flex:1,minHeight:0,paddingRight:4}}>
+            {ranked.map((d,i)=>{
+              const tr=trend(d), col=COLORS[d.color], isSel=selected===d.id;
+              return (
+                <div key={d.id} onClick={()=>setSelected(d.id)}
+                  onMouseEnter={()=>setHovered(d.id)} onMouseLeave={()=>setHovered(null)}
+                  style={{display:"flex",alignItems:"center",gap:10,padding:"7px 8px",borderRadius:8,cursor:"pointer",
+                    marginBottom:3,background:isSel?"rgba(0,245,255,.12)":hovered===d.id?"rgba(255,255,255,.04)":"transparent",
+                    borderLeft:`3px solid ${col}`}}>
+                  <span className="mono" style={{fontSize:11,color:"#6b8299",width:18}}>{i+1}</span>
+                  <span style={{fontSize:16}}>{d.flag}</span>
+                  <div style={{flex:1,minWidth:0}}>
+                    <div style={{fontSize:12.5,fontWeight:600,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{d.name}</div>
+                    <div className="mono" style={{fontSize:9.5,color:"#6b8299"}}>{d.region}</div>
+                  </div>
+                  <span className="mono" style={{fontSize:15,fontWeight:700,color:col}}>{d.liveScore}</span>
+                  <span style={{fontSize:14,color:tr.c,width:14,textAlign:"center"}}>{tr.a}</span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* --- CENTRE : RADAR --- */}
+        <div className="glass" style={{flex:1,display:"flex",flexDirection:"column",minWidth:0,position:"relative",padding:8}}>
+          <div style={{position:"absolute",top:12,left:16,zIndex:2}}>
+            <div style={{fontSize:13,fontWeight:700,color:COLORS.cyan,letterSpacing:1}}>◉ RADAR D'INVESTISSEMENT</div>
+            <div className="mono" style={{fontSize:10,color:"#6b8299"}}>anneaux = horizons temporels</div>
+          </div>
+          <div style={{position:"absolute",top:12,right:16,zIndex:2,display:"flex",flexDirection:"column",gap:5}}>
+            {[["green","Croissance + stable"],["gold","Croissance + risque modéré"],["red","Risque élevé / éviter"]].map(([c,l])=>(
+              <div key={c} style={{display:"flex",alignItems:"center",gap:6}}>
+                <span style={{width:9,height:9,borderRadius:9,background:COLORS[c],boxShadow:`0 0 6px ${COLORS[c]}`}}/>
+                <span className="mono" style={{fontSize:10,color:"#9fb4c7"}}>{l}</span>
+              </div>
+            ))}
+          </div>
+          <div style={{flex:1,display:"flex",alignItems:"center",justifyContent:"center",minHeight:0}}>
+            <RadarMap year={year} selected={selected} hovered={hovered}
+              onHover={setHovered} onSelect={setSelected}/>
+          </div>
+          {/* tooltip survol */}
+          {hovered && (()=>{ const d=DATA.find(x=>x.id===hovered); return (
+            <div className="glass glow-cyan" style={{position:"absolute",bottom:14,left:14,padding:"10px 14px",zIndex:3,maxWidth:240}}>
+              <div style={{fontWeight:700,marginBottom:4}}>{d.flag} {d.name} <span style={{color:"#6b8299",fontWeight:400,fontSize:11}}>· {d.country}</span></div>
+              <div className="mono" style={{fontSize:11,color:"#9fb4c7",lineHeight:1.6}}>
+                Score <span style={{color:COLORS[d.color]}}>{scoreAtYear(d,year)}</span> · PIB <span style={{color:COLORS.green}}>{d.gdpGrowth}%</span><br/>
+                Stabilité {d.stability} · Proj. 30A <span style={{color:COLORS.gold}}>+{d.proj30}%</span>
+              </div>
+            </div>
+          );})()}
+        </div>
+
+        {/* --- DROITE : DÉTAIL --- */}
+        <div className="glass" style={{width:360,display:"flex",flexDirection:"column",padding:14,overflowY:"auto",minHeight:0}}>
+          {sel && (
+            <React.Fragment>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
+                <div>
+                  <div style={{fontSize:19,fontWeight:700}}>{sel.flag} {sel.name}</div>
+                  <div className="mono" style={{fontSize:11,color:"#6b8299"}}>{sel.country} · {sel.region}</div>
+                </div>
+                <RiskBadge risk={sel.risk}/>
+              </div>
+
+              <div style={{display:"flex",alignItems:"center",gap:14,margin:"14px 0"}}>
+                <CircularScore value={sel.score} color={COLORS[sel.color]}/>
+                <div>
+                  <div className="mono" style={{fontSize:11,color:"#6b8299"}}>SCORE COMPOSITE</div>
+                  <div style={{fontSize:12,color:"#9fb4c7",marginTop:6,lineHeight:1.5}}>
+                    Score en {year} : <span className="mono" style={{color:COLORS.cyan,fontWeight:700}}>{scoreAtYear(sel,year)}</span><br/>
+                    Projection PIB 30 ans :<br/><span className="mono" style={{color:COLORS.gold,fontWeight:700,fontSize:15}}>+{sel.proj30}%</span>
+                  </div>
+                </div>
+              </div>
+
+              <div style={{marginBottom:6}}>
+                {metricList(sel).map(m=>(
+                  <Bar key={m.key} label={m.label} val={m.val} norm={m.norm} unit={m.unit} color={COLORS[sel.color]}/>
+                ))}
+              </div>
+
+              <div className="mono" style={{fontSize:11,color:"#6b8299",margin:"10px 0 4px"}}>PROJECTION PIB 2025–2055 (base 100)</div>
+              <LineChart proj={sel.proj} color={COLORS[sel.color]}/>
+
+              <div className="mono" style={{fontSize:11,color:"#6b8299",margin:"14px 0 6px"}}>POURQUOI INVESTIR ICI</div>
+              {sel.why.map((w,i)=>(
+                <div key={i} style={{display:"flex",gap:8,fontSize:12.5,color:"#cfe0ee",marginBottom:6,lineHeight:1.45}}>
+                  <span style={{color:COLORS.cyan}}>▸</span><span>{w}</span>
+                </div>
+              ))}
+
+              <div className="mono" style={{fontSize:11,color:"#6b8299",margin:"12px 0 6px"}}>MEILLEURS SECTEURS</div>
+              <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
+                {sel.sectors.map(s=>(
+                  <span key={s} className="mono" style={{fontSize:11,padding:"4px 10px",borderRadius:20,
+                    border:`1px solid ${COLORS.cyan}44`,background:`${COLORS.cyan}12`,color:COLORS.cyan}}>{s}</span>
+                ))}
+              </div>
+
+              <button onClick={()=>toggleCompare(sel.id)} className="mono"
+                style={{marginTop:16,padding:"9px",borderRadius:9,fontSize:12,fontWeight:700,letterSpacing:.5,
+                  border:`1px solid ${compare.includes(sel.id)?COLORS.gold:COLORS.cyan}`,
+                  background:compare.includes(sel.id)?`${COLORS.gold}18`:`${COLORS.cyan}12`,
+                  color:compare.includes(sel.id)?COLORS.gold:COLORS.cyan}}>
+                {compare.includes(sel.id)?"✓ DANS LE COMPARATIF":"+ AJOUTER AU COMPARATIF"}
+              </button>
+            </React.Fragment>
+          )}
+        </div>
+      </div>
+
+      {/* ===== BOTTOM BAR : COMPARATIF ===== */}
+      <div className="glass" style={{padding:12,display:"flex",gap:18,alignItems:"center",minHeight:170}}>
+        <div style={{display:"flex",flexDirection:"column",gap:6,minWidth:150}}>
+          <div style={{fontSize:13,fontWeight:700,color:COLORS.cyan,letterSpacing:1}}>⚖ COMPARATIF</div>
+          <div className="mono" style={{fontSize:10,color:"#6b8299"}}>jusqu'à 3 destinations</div>
+          <div style={{display:"flex",flexDirection:"column",gap:5,marginTop:4}}>
+            {compareItems.length===0 && <span style={{fontSize:11,color:"#6b8299"}}>Ajoutez des destinations depuis le panneau de détail.</span>}
+            {compareItems.map((d,k)=>{
+              const palette=[COLORS.cyan, COLORS.gold, COLORS.green];
+              return (
+                <div key={d.id} style={{display:"flex",alignItems:"center",gap:6,fontSize:12}}>
+                  <span style={{width:9,height:9,borderRadius:2,background:palette[k]}}/>
+                  <span>{d.flag} {d.name}</span>
+                  <button onClick={()=>toggleCompare(d.id)} style={{marginLeft:"auto",background:"none",border:"none",color:COLORS.red,fontSize:13}}>✕</button>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        <div style={{display:"flex",alignItems:"center",justifyContent:"center"}}>
+          {compareItems.length>0
+            ? <CompareRadar items={compareItems}/>
+            : <div className="mono" style={{fontSize:11,color:"#33485c",width:240,textAlign:"center"}}>— radar comparatif —</div>}
+        </div>
+
+        <div style={{flex:1,display:"flex",flexDirection:"column",gap:10}}>
+          {/* mini tableau */}
+          <div style={{display:"flex",gap:10,flexWrap:"wrap"}}>
+            {compareItems.map((d,k)=>{
+              const palette=[COLORS.cyan, COLORS.gold, COLORS.green];
+              return (
+                <div key={d.id} style={{flex:"1 1 140px",minWidth:140,padding:"8px 10px",borderRadius:9,
+                  border:`1px solid ${palette[k]}40`,background:`${palette[k]}0d`}}>
+                  <div style={{fontSize:12,fontWeight:700,marginBottom:4}}>{d.flag} {d.name}</div>
+                  <div className="mono" style={{fontSize:10.5,color:"#9fb4c7",lineHeight:1.7}}>
+                    Score <span style={{color:COLORS[d.color]}}>{d.score}</span> · PIB {d.gdpGrowth}%<br/>
+                    Stab. {d.stability} · Proj.30A <span style={{color:COLORS.gold}}>+{d.proj30}%</span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          {bestLongTerm && (
+            <div className="mono" style={{fontSize:12.5,color:"#cfe0ee",padding:"8px 12px",borderRadius:9,
+              border:`1px solid ${COLORS.green}40`,background:`${COLORS.green}10`}}>
+              🏆 Meilleur pour le patrimoine long terme :
+              <span style={{color:COLORS.green,fontWeight:700}}> {bestLongTerm.flag} {bestLongTerm.name}</span>
+              {" "}— projection PIB 30 ans la plus élevée (<span style={{color:COLORS.gold}}>+{bestLongTerm.proj30}%</span>),
+              risque <b>{ {LOW:"faible",MEDIUM:"modéré",HIGH:"élevé"}[bestLongTerm.risk] }</b>.
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
+</script>
+</body>
+</html>
