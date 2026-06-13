@@ -43,11 +43,13 @@
     transition:background .5s ease, border-color .5s ease;
   }
   #sparkleCanvas{position:fixed;inset:0;pointer-events:none;z-index:9999;}
-  #themeToggle{
+  .modebtn{
     border:1px solid var(--border);border-radius:10px;padding:6px 12px;font-size:11px;
-    letter-spacing:1px;color:var(--ink);background:var(--panel);transition:all .3s ease;
+    letter-spacing:1px;color:#9fb4c7;background:var(--panel);transition:all .3s ease;white-space:nowrap;
   }
-  #themeToggle:hover{border-color:var(--gold);color:var(--gold);}
+  .modebtn:hover{border-color:var(--cyan);color:var(--cyan);}
+  .modebtn.active{border-color:var(--gold);color:var(--gold);background:rgba(255,215,0,.12);box-shadow:0 0 14px rgba(255,215,0,.25);}
+  #princeBtn.active{border-color:var(--gold);color:#FFE9A0;background:rgba(255,215,0,.18);box-shadow:0 0 18px rgba(255,215,0,.4);}
   button{font-family:var(--sans);cursor:pointer;color:var(--ink);border:none;background:none;}
   input[type=range]{accent-color:var(--cyan);width:100%;}
 
@@ -55,14 +57,16 @@
   @keyframes sweep{from{transform:rotate(0deg);}to{transform:rotate(360deg);}}
   @keyframes blink{50%{opacity:.35;}}
   @keyframes marquee{from{transform:translateX(0);}to{transform:translateX(-50%);}}
-  @keyframes float3d{0%,100%{transform:translateZ(0px) rotateX(0deg);filter:drop-shadow(0 30px 60px rgba(0,245,255,0.15));}50%{transform:translateZ(20px) rotateX(5deg);filter:drop-shadow(0 50px 80px rgba(0,245,255,0.25));}}
+  @keyframes floatTilt{0%,100%{transform:rotateX(52deg) scale(1.08) translateY(0);}50%{transform:rotateX(50deg) scale(1.09) translateY(-6px);}}
   .blink{animation:blink 1.4s steps(2) infinite;}
 
   #app{position:relative;z-index:1;height:100vh;display:flex;flex-direction:column;padding:10px;gap:10px;}
   .cols{flex:1;display:flex;gap:10px;min-height:0;}
   .left{width:330px;display:flex;flex-direction:column;padding:12px;min-height:0;}
-  .center{flex:1;display:flex;flex-direction:column;min-width:0;position:relative;padding:8px;perspective:1200px;}
-  #radarWrap{display:flex;align-items:center;justify-content:center;flex:1;position:relative;transform-style:preserve-3d;animation:float3d 6s ease-in-out infinite;}
+  .center{flex:1;display:flex;flex-direction:column;min-width:0;position:relative;padding:8px;perspective:1100px;overflow:hidden;}
+  #radarWrap{display:flex;align-items:center;justify-content:center;flex:1;position:relative;transform-style:preserve-3d;}
+  #radarTilt{width:100%;height:100%;display:flex;align-items:center;justify-content:center;transform:rotateX(52deg) scale(1.08);transform-origin:center 60%;transition:transform .6s cubic-bezier(.2,.8,.2,1);animation:floatTilt 7s ease-in-out infinite;}
+  .center.flat #radarTilt{transform:rotateX(0deg) scale(1);animation:none;}
   .right{width:360px;display:flex;flex-direction:column;padding:14px;overflow-y:auto;min-height:0;}
   .bottom{padding:12px;display:flex;gap:18px;align-items:center;min-height:170px;}
   .row{display:flex;align-items:center;gap:10px;padding:7px 8px;border-radius:8px;cursor:pointer;margin-bottom:3px;}
@@ -223,7 +227,7 @@ function metricList(d){
 }
 
 /* ===================== ÉTAT ===================== */
-var state={year:2025,selected:"sg",hovered:null,filter:"ALL",sort:"score",compare:["sg","hcm"]};
+var state={year:2025,selected:"sg",hovered:null,filter:"ALL",sort:"score",compare:["sg","hcm"],pestel:false,prince:false};
 var COMP_PAL=[COLORS.cyan,COLORS.gold,COLORS.green];
 var RISK_FR={LOW:"faible",MEDIUM:"modéré",HIGH:"élevé"};
 var RISK_BADGE={LOW:["RISQUE FAIBLE",COLORS.green],MEDIUM:["RISQUE MODÉRÉ",COLORS.gold],HIGH:["RISQUE ÉLEVÉ",COLORS.red]};
@@ -235,43 +239,47 @@ var ALERTS=[
   "🌍 Afrique : démographie portée par fintech &amp; énergies vertes"
 ];
 
-/* ===================== THÈMES ===================== */
-var THEMES={
-  neon:{
-    label:"✨ PASTEL",
-    vars:{
-      bg:"#050A14", ink:"#dbe9f4", muted:"#6b8299",
-      panel:"rgba(10,22,38,0.55)", border:"rgba(0,245,255,0.18)",
-      glow1:"rgba(0,245,255,0.07)", glow2:"rgba(255,215,0,0.05)",
-      gridline:"rgba(0,245,255,0.045)", scrollthumb:"rgba(0,245,255,0.25)"
-    },
-    colors:{green:"#00FF88",gold:"#FFD700",red:"#FF4444",cyan:"#00F5FF"}
-  },
-  pastel:{
-    label:"◎ NÉON",
-    vars:{
-      bg:"#FBF6FF", ink:"#4A4458", muted:"#9c93b3",
-      panel:"rgba(255,255,255,0.6)", border:"rgba(157,143,224,0.30)",
-      glow1:"rgba(157,143,224,0.16)", glow2:"rgba(244,184,96,0.16)",
-      gridline:"rgba(157,143,224,0.07)", scrollthumb:"rgba(157,143,224,0.35)"
-    },
-    colors:{green:"#6FCB9F",gold:"#F4B860",red:"#F2848B",cyan:"#9D8FE0"}
-  }
-};
-function applyTheme(name){
-  state.theme=name;
-  var t=THEMES[name],root=document.documentElement.style;
-  Object.keys(t.vars).forEach(function(k){root.setProperty("--"+k,t.vars[k]);});
-  Object.keys(t.colors).forEach(function(k){COLORS[k]=t.colors[k];});
-  RISK_BADGE.LOW[1]=COLORS.green; RISK_BADGE.MEDIUM[1]=COLORS.gold; RISK_BADGE.HIGH[1]=COLORS.red;
-  COMP_PAL[0]=COLORS.cyan; COMP_PAL[1]=COLORS.gold; COMP_PAL[2]=COLORS.green;
-  DATA.forEach(function(d){d.color=colorFor(d);});
-  document.documentElement.setAttribute("data-theme",name);
-  try{localStorage.setItem("radarTheme",name);}catch(e){}
-  var tb=document.getElementById("themeToggle");
-  if(tb) tb.textContent=THEMES[name].label;
-  buildRadarStatic();
-  render();
+/* ===================== ANALYSE PESTEL ===================== */
+/* Politique · Économique · Social · Technologique · Environnemental · Légal */
+var PESTEL_AXES=[
+  {key:"P",label:"Politique",icon:"⚖"},
+  {key:"E",label:"Économique",icon:"📈"},
+  {key:"S",label:"Social",icon:"👥"},
+  {key:"T",label:"Technologique",icon:"⚙"},
+  {key:"N",label:"Environnemental",icon:"🌿"},
+  {key:"L",label:"Légal",icon:"§"}
+];
+function clamp100(v){return Math.max(0,Math.min(100,Math.round(v)));}
+function normRange(v,min,max){return Math.max(0,Math.min(100,(v-min)/(max-min)*100));}
+function pestelScores(d){
+  var envBase=d.infra*0.45+d.innov*0.2+30;
+  var s=d.sectors.join(",");
+  if(/Énergie|Auto|Manufacture|Matières/.test(s)) envBase-=12;
+  if(/Tech|Fintech|E-gov|Biotech|SaaS|Numérique/.test(s)) envBase+=8;
+  return {
+    P:clamp100(d.stability),
+    E:clamp100(normRange(d.gdpGrowth,-3,8)*0.55+d.score*0.45),
+    S:clamp100(normRange(d.popGrowth,-1,3)*0.45+d.innov*0.55),
+    T:clamp100(d.innov),
+    N:clamp100(envBase),
+    L:clamp100(d.stability*0.6+d.infra*0.4)
+  };
+}
+function pestelGlobal(d){
+  var p=pestelScores(d);
+  return Math.round((p.P+p.E+p.S+p.T+p.N+p.L)/6);
+}
+/* "Fait du prince" : pays économiquement solides ET politiquement stables */
+function isPrincePick(d){
+  var p=pestelScores(d);
+  return p.E>=68 && p.P>=80 && d.risk!=="HIGH";
+}
+function pestelVerdict(d){
+  var g=pestelGlobal(d);
+  if(g>=80) return {t:"PROFIL D'EXCELLENCE",c:COLORS.green};
+  if(g>=65) return {t:"PROFIL SOLIDE",c:COLORS.gold};
+  if(g>=50) return {t:"PROFIL CONTRASTÉ",c:COLORS.gold};
+  return {t:"PROFIL FRAGILE",c:COLORS.red};
 }
 
 /* ===================== HELPERS RENDU ===================== */
@@ -295,19 +303,22 @@ function rankedList(){
   if(state.filter==="COUNTRIES") list=list.filter(function(d){return d.type==="country";});
   if(state.filter==="EMERGING") list=list.filter(function(d){return d.cat==="emerging";});
   if(state.filter==="STABLE") list=list.filter(function(d){return d.cat==="stable";});
+  if(state.prince) list=list.filter(isPrincePick);
   var cmp={
     score:function(a,b){return b.liveScore-a.liveScore;},
     gdp:function(a,b){return b.gdpGrowth-a.gdpGrowth;},
     stability:function(a,b){return b.stability-a.stability;},
-    proj:function(a,b){return b.proj30-a.proj30;}
-  }[state.sort];
+    proj:function(a,b){return b.proj30-a.proj30;},
+    pestel:function(a,b){return pestelGlobal(b)-pestelGlobal(a);},
+    prince:function(a,b){return (b.stability+ b.gdpGrowth*4)-(a.stability+ a.gdpGrowth*4);}
+  }[state.sort]||function(a,b){return b.liveScore-a.liveScore;};
   return list.sort(cmp).slice(0,20);
 }
 
 /* ===================== SHELL (construit une fois) ===================== */
 function buildShell(){
   var FILTERS=[["ALL","TOUT"],["CITIES","VILLES"],["COUNTRIES","PAYS"],["EMERGING","ÉMERGENTS"],["STABLE","STABLES"]];
-  var SORTS=[["score","Score"],["gdp","Croissance"],["stability","Stabilité"],["proj","Projection 30A"]];
+  var SORTS=[["score","Score"],["gdp","Croissance"],["stability","Stabilité"],["proj","Projection 30A"],["pestel","PESTEL"]];
 
   var topbar=''+
   '<div class="glass topbar" style="padding:10px 16px;display:flex;align-items:center;gap:18px;flex-wrap:wrap;">'+
@@ -322,7 +333,8 @@ function buildShell(){
       '<input type="range" min="2025" max="2055" step="1" id="yearSlider" value="'+state.year+'">'+
     '</div>'+
     '<div class="mono" id="clock" style="font-size:13px;color:var(--cyan);min-width:88px;text-align:right;text-shadow:0 0 8px rgba(0,245,255,.4);"></div>'+
-    '<button id="themeToggle" class="mono" data-theme-toggle></button>'+
+    '<button id="pestelBtn" class="modebtn mono" data-pestel-toggle>⬡ ANALYSE PESTEL</button>'+
+    '<button id="princeBtn" class="modebtn mono" data-prince-toggle>👑 FAIT DU PRINCE</button>'+
   '</div>';
 
   var alerts=''+
@@ -356,8 +368,13 @@ function buildShell(){
         return '<div style="display:flex;align-items:center;gap:6px;"><span style="width:9px;height:9px;border-radius:9px;background:'+COLORS[l[0]]+';box-shadow:0 0 6px '+COLORS[l[0]]+';"></span><span class="mono" style="font-size:10px;color:#9fb4c7;">'+l[1]+'</span></div>';
       }).join('')+
     '</div>'+
+    '<div style="position:absolute;bottom:12px;left:16px;z-index:2;">'+
+      '<button class="modebtn mono" data-flat-toggle style="font-size:10px;padding:4px 10px;">⟲ VUE À PLAT / 3D</button>'+
+    '</div>'+
     '<div id="radarWrap" style="min-height:0;">'+
-      '<svg id="radar" width="100%" height="100%" viewBox="0 0 560 560" style="max-height:100%;"></svg>'+
+      '<div id="radarTilt">'+
+        '<svg id="radar" width="100%" height="100%" viewBox="0 0 560 560" style="max-height:100%;max-width:100%;"></svg>'+
+      '</div>'+
     '</div>'+
     '<div id="tooltip" style="display:none;position:absolute;bottom:14px;left:14px;z-index:3;max-width:240px;"></div>'+
   '</div>';
@@ -396,9 +413,12 @@ function buildRadarStatic(){
   var defs='<defs>'+
     '<filter id="glow" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="3" result="coloredBlur"/><feMerge><feMergeNode in="coloredBlur"/><feMergeNode in="SourceGraphic"/></feMerge></filter>'+
     '<radialGradient id="core" cx="50%" cy="50%" r="50%"><stop offset="0%" stop-color="'+COLORS.cyan+'" stop-opacity="0.35"/><stop offset="50%" stop-color="'+COLORS.cyan+'" stop-opacity="0.15"/><stop offset="100%" stop-color="'+COLORS.cyan+'" stop-opacity="0"/></radialGradient>'+
+    '<radialGradient id="goldcore" cx="50%" cy="50%" r="50%"><stop offset="0%" stop-color="#FFF6CC" stop-opacity="1"/><stop offset="25%" stop-color="'+COLORS.gold+'" stop-opacity="0.9"/><stop offset="60%" stop-color="'+COLORS.gold+'" stop-opacity="0.25"/><stop offset="100%" stop-color="'+COLORS.gold+'" stop-opacity="0"/></radialGradient>'+
     '<linearGradient id="sweepGrad" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="'+COLORS.cyan+'" stop-opacity="0"/><stop offset="100%" stop-color="'+COLORS.cyan+'" stop-opacity="0.4"/></linearGradient>'+
     '</defs>';
-  var halo='<circle cx="'+cx+'" cy="'+cy+'" r="120" fill="url(#core)" opacity="0.8"/><circle cx="'+cx+'" cy="'+cy+'" r="95" fill="'+COLORS.cyan+'" opacity="0.08"/>';
+  var halo='<circle cx="'+cx+'" cy="'+cy+'" r="120" fill="url(#core)" opacity="0.8"/>'+
+    '<circle cx="'+cx+'" cy="'+cy+'" r="70" fill="url(#goldcore)" style="transform-origin:'+cx+'px '+cy+'px;animation:pulse 3.5s ease-in-out infinite;"/>'+
+    '<circle cx="'+cx+'" cy="'+cy+'" r="9" fill="#FFF6CC" style="filter:drop-shadow(0 0 14px '+COLORS.gold+');transform-origin:'+cx+'px '+cy+'px;animation:pulse 2.6s ease-in-out infinite;"/>';
   var rings='<g id="rings"></g>';
   var radial='';
   for(var i=0;i<8;i++){var a=i/8*Math.PI*2;radial+='<line x1="'+cx+'" y1="'+cy+'" x2="'+(cx+Math.cos(a)*RING_R[4])+'" y2="'+(cy+Math.sin(a)*RING_R[4])+'" stroke="'+COLORS.cyan+'" stroke-width="0.5" opacity="0.12" style="filter:drop-shadow(0 0 2px '+COLORS.cyan+')"/>';}
@@ -458,10 +478,16 @@ function renderNodes(){
   RADAR_NODES.forEach(function(nd){
     var d=nd.d,col=COLORS[d.color];
     var isSel=state.selected===d.id,isHov=state.hovered===d.id;
+    var prince=state.prince&&isPrincePick(d);
+    var dim=state.prince&&!prince;
     var sz=isSel?9:isHov?8:5.5;
-    h+='<g data-node="'+d.id+'" style="cursor:pointer;">';
+    h+='<g data-node="'+d.id+'" style="cursor:pointer;opacity:'+(dim?0.18:1)+';">';
+    if(prince){
+      h+='<circle cx="'+nd.x+'" cy="'+nd.y+'" r="19" fill="none" stroke="'+COLORS.gold+'" stroke-width="1.4" opacity="0.9" style="filter:drop-shadow(0 0 8px '+COLORS.gold+');animation:pulse '+(2.4+(d.score%4)*0.2)+'s ease-in-out infinite;"/>';
+      h+='<text x="'+nd.x+'" y="'+(nd.y-21)+'" text-anchor="middle" font-size="13" style="pointer-events:none;">👑</text>';
+    }
     h+='<circle cx="'+nd.x+'" cy="'+nd.y+'" r="14" fill="'+col+'" opacity="0.25" style="transform-origin:'+nd.x+'px '+nd.y+'px;animation:pulse '+(2+(d.score%5)*0.3)+'s ease-in-out infinite;"/>';
-    h+='<circle cx="'+nd.x+'" cy="'+nd.y+'" r="'+sz+'" fill="'+col+'" stroke="'+(isSel?"#fff":col)+'" stroke-width="'+(isSel?2:0)+'" style="filter:drop-shadow(0 0 '+(isSel?12:8)+'px '+col+');"/>';
+    h+='<circle cx="'+nd.x+'" cy="'+nd.y+'" r="'+sz+'" fill="'+col+'" stroke="'+(isSel?"#fff":prince?COLORS.gold:col)+'" stroke-width="'+(isSel?2:prince?1.5:0)+'" style="filter:drop-shadow(0 0 '+(isSel?12:prince?12:8)+'px '+(prince?COLORS.gold:col)+');"/>';
     if(isHov||isSel) h+='<text x="'+nd.x+'" y="'+(nd.y-14)+'" text-anchor="middle" class="mono" font-size="10" fill="#fff" font-weight="700" style="pointer-events:none;">'+d.flag+' '+d.name+'</text>';
     h+='</g>';
   });
@@ -477,17 +503,20 @@ function updateTopbar(){
     '<span class="mono" style="font-size:12px;color:'+gs.c+';font-weight:700;">ÉTAT : '+gs.t+'</span>';
   document.getElementById("gdpTicker").innerHTML='PIB MONDIAL <span style="color:'+COLORS.green+';font-weight:700;">+'+globalGdp()+'%</span>';
   document.getElementById("yearLabel").textContent=state.year;
+  var pb=document.getElementById("pestelBtn"); if(pb) pb.classList.toggle("active",state.pestel);
+  var prb=document.getElementById("princeBtn"); if(prb) prb.classList.toggle("active",state.prince);
 }
 function renderLeft(){
   var list=rankedList(), h='';
   list.forEach(function(d,i){
-    var tr=trendOf(d),col=COLORS[d.color],sel=state.selected===d.id;
-    h+='<div class="row" data-select="'+d.id+'" style="background:'+(sel?"rgba(0,245,255,.12)":"transparent")+';border-left:3px solid '+col+';">'+
+    var tr=trendOf(d),col=COLORS[d.color],sel=state.selected===d.id,prince=isPrincePick(d);
+    var showVal=state.sort==="pestel"?pestelGlobal(d):d.liveScore;
+    h+='<div class="row" data-select="'+d.id+'" style="background:'+(sel?"rgba(0,245,255,.12)":prince&&state.prince?"rgba(255,215,0,.07)":"transparent")+';border-left:3px solid '+(prince&&state.prince?COLORS.gold:col)+';">'+
       '<span class="mono" style="font-size:11px;color:#6b8299;width:18px;">'+(i+1)+'</span>'+
       '<span style="font-size:16px;">'+d.flag+'</span>'+
-      '<div style="flex:1;min-width:0;"><div style="font-size:12.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+d.name+'</div>'+
+      '<div style="flex:1;min-width:0;"><div style="font-size:12.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+(prince?'👑 ':'')+d.name+'</div>'+
       '<div class="mono" style="font-size:9.5px;color:#6b8299;">'+d.region+'</div></div>'+
-      '<span class="mono" style="font-size:15px;font-weight:700;color:'+col+';">'+d.liveScore+'</span>'+
+      '<span class="mono" style="font-size:15px;font-weight:700;color:'+(state.sort==="pestel"?pestelVerdict(d).c:col)+';">'+showVal+'</span>'+
       '<span style="font-size:14px;color:'+tr.c+';width:14px;text-align:center;">'+tr.a+'</span>'+
     '</div>';
   });
@@ -511,6 +540,37 @@ function lineChart(proj,color){
     '<defs><linearGradient id="lg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="'+color+'" stop-opacity="0.35"/><stop offset="100%" stop-color="'+color+'" stop-opacity="0"/></linearGradient></defs>'+
     grid+'<polygon points="'+area+'" fill="url(#lg)"/>'+
     '<polyline points="'+pts+'" fill="none" stroke="'+color+'" stroke-width="2" style="filter:drop-shadow(0 0 4px '+color+');"/>'+marks+'</svg>';
+}
+function pestelHexPanel(d){
+  var p=pestelScores(d), g=pestelGlobal(d), v=pestelVerdict(d), prince=isPrincePick(d);
+  var W=230,cx=115,cy=120,R=80;
+  function pt(i,r){var a=i/6*Math.PI*2-Math.PI/2;return [cx+Math.cos(a)*R*r,cy+Math.sin(a)*R*r];}
+  var grid=[0.25,0.5,0.75,1].map(function(gg){return '<polygon points="'+PESTEL_AXES.map(function(_,j){return pt(j,gg).join(",");}).join(" ")+'" fill="none" stroke="rgba(0,245,255,0.12)"/>';}).join('');
+  var ax=PESTEL_AXES.map(function(a,i){var e=pt(i,1),l=pt(i,1.2);return '<line x1="'+cx+'" y1="'+cy+'" x2="'+e[0]+'" y2="'+e[1]+'" stroke="rgba(0,245,255,0.12)"/><text x="'+l[0]+'" y="'+l[1]+'" text-anchor="middle" font-size="11" font-weight="700" fill="'+v.c+'" class="mono">'+a.key+'</text>';}).join('');
+  var vals=PESTEL_AXES.map(function(a){return p[a.key]/100;});
+  var poly=vals.map(function(val,i){return pt(i,val).join(",");}).join(" ");
+  var shape='<polygon points="'+poly+'" fill="'+v.c+'22" stroke="'+v.c+'" stroke-width="2" style="filter:drop-shadow(0 0 5px '+v.c+');"/>';
+  var dots=vals.map(function(val,i){var q=pt(i,val);return '<circle cx="'+q[0]+'" cy="'+q[1]+'" r="2.6" fill="'+v.c+'"/>';}).join('');
+  var bars=PESTEL_AXES.map(function(a){var val=p[a.key];var bc=val>=75?COLORS.green:val>=55?COLORS.gold:COLORS.red;
+    return '<div style="margin-bottom:8px;"><div style="display:flex;justify-content:space-between;font-size:11.5px;margin-bottom:3px;"><span style="color:#cfe0ee;">'+a.icon+' '+a.label+'</span><span class="mono" style="color:'+bc+';font-weight:700;">'+val+'</span></div>'+
+      '<div style="height:6px;background:rgba(255,255,255,0.07);border-radius:6px;overflow:hidden;"><div class="pestel-bar" data-w="'+val+'" style="width:0;height:100%;background:linear-gradient(90deg,'+bc+'55,'+bc+');border-radius:6px;box-shadow:0 0 7px '+bc+';transition:width .7s cubic-bezier(.2,.8,.2,1);"></div></div></div>';
+  }).join('');
+  return '<div style="border:1px solid '+v.c+'40;background:'+v.c+'0c;border-radius:12px;padding:12px;margin:6px 0 12px;">'+
+    '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">'+
+      '<span class="mono" style="font-size:12px;font-weight:700;color:'+v.c+';letter-spacing:1px;">⬡ ANALYSE PESTEL</span>'+
+      (prince?'<span class="mono" style="font-size:10px;color:'+COLORS.gold+';border:1px solid '+COLORS.gold+';border-radius:20px;padding:2px 8px;background:'+COLORS.gold+'1a;">👑 FAIT DU PRINCE</span>':'')+
+    '</div>'+
+    '<div style="display:flex;align-items:center;gap:6px;">'+
+      '<svg width="'+W+'" height="240" viewBox="0 0 '+W+' 240">'+grid+ax+shape+dots+'</svg>'+
+    '</div>'+
+    '<div style="display:flex;align-items:baseline;gap:8px;margin:4px 0 10px;">'+
+      '<span class="mono" style="font-size:26px;font-weight:700;color:'+v.c+';">'+g+'</span>'+
+      '<span class="mono" style="font-size:11px;color:#6b8299;">/100 — </span>'+
+      '<span class="mono" style="font-size:12px;font-weight:700;color:'+v.c+';">'+v.t+'</span>'+
+    '</div>'+
+    bars+
+    '<div class="mono" style="font-size:10.5px;color:#6b8299;line-height:1.5;margin-top:4px;">P Politique · E Économique · S Social · T Technologique · N Environnemental · L Légal</div>'+
+  '</div>';
 }
 function renderRight(){
   var d=byId(state.selected),col=COLORS[d.color];
@@ -539,6 +599,7 @@ function renderRight(){
       '<div><div class="mono" style="font-size:11px;color:#6b8299;">SCORE COMPOSITE</div>'+
       '<div style="font-size:12px;color:#9fb4c7;margin-top:6px;line-height:1.5;">Score en '+state.year+' : <span class="mono" style="color:'+COLORS.cyan+';font-weight:700;">'+scoreAtYear(d,state.year)+'</span><br>Projection PIB 30 ans :<br><span class="mono" style="color:'+COLORS.gold+';font-weight:700;font-size:15px;">+'+d.proj30+'%</span></div></div>'+
     '</div>'+
+    (state.pestel?pestelHexPanel(d):'')+
     '<div style="margin-bottom:6px;">'+bars+'</div>'+
     '<div class="mono" style="font-size:11px;color:#6b8299;margin:10px 0 4px;">PROJECTION PIB 2025–2055 (base 100)</div>'+
     lineChart(d.proj,col)+
@@ -552,6 +613,7 @@ function renderRight(){
   requestAnimationFrame(function(){
     arc.setAttribute("stroke-dashoffset",c*(1-d.score/100));
     Array.prototype.forEach.call(document.querySelectorAll(".metric-bar"),function(b){b.style.width=b.getAttribute("data-w")+"%";});
+    Array.prototype.forEach.call(document.querySelectorAll(".pestel-bar"),function(b){b.style.width=b.getAttribute("data-w")+"%";});
   });
   var start=null,dur=900;
   function step(ts){if(!start)start=ts;var p=Math.min(1,(ts-start)/dur);num.textContent=Math.round(d.score*(1-Math.pow(1-p,3)));if(p<1)requestAnimationFrame(step);}
@@ -603,9 +665,11 @@ function render(){
 }
 function bindEvents(){
   document.getElementById("app").addEventListener("click",function(e){
-    var t=e.target.closest("[data-select],[data-node],[data-filter],[data-sort],[data-comp-toggle],[data-comp-remove],[data-theme-toggle]");
+    var t=e.target.closest("[data-select],[data-node],[data-filter],[data-sort],[data-comp-toggle],[data-comp-remove],[data-pestel-toggle],[data-prince-toggle],[data-flat-toggle]");
     if(!t) return;
-    if(t.hasAttribute("data-theme-toggle")){applyTheme(state.theme==="neon"?"pastel":"neon");return;}
+    if(t.hasAttribute("data-pestel-toggle")){state.pestel=!state.pestel;render();return;}
+    if(t.hasAttribute("data-prince-toggle")){state.prince=!state.prince;if(state.prince)state.sort="prince";render();return;}
+    if(t.hasAttribute("data-flat-toggle")){document.querySelector(".center").classList.toggle("flat");return;}
     if(t.hasAttribute("data-filter")){state.filter=t.getAttribute("data-filter");render();return;}
     if(t.hasAttribute("data-sort")){state.sort=t.getAttribute("data-sort");render();return;}
     if(t.hasAttribute("data-comp-toggle")){toggleCompare(t.getAttribute("data-comp-toggle"));render();return;}
@@ -673,9 +737,7 @@ function initPrinceTouch(){
 /* ===================== INIT ===================== */
 buildShell();
 bindEvents();
-var savedTheme="neon";
-try{savedTheme=localStorage.getItem("radarTheme")||"neon";}catch(e){}
-applyTheme(THEMES[savedTheme]?savedTheme:"neon");
+render();
 initPrinceTouch();
 setInterval(function(){var c=document.getElementById("clock");if(c)c.textContent=new Date().toLocaleTimeString("fr-FR");},1000);
 document.getElementById("clock").textContent=new Date().toLocaleTimeString("fr-FR");
