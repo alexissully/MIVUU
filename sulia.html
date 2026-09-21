@@ -415,12 +415,13 @@
 
   intro.addEventListener('click', skipIntro);
 
-  // the video IS the intro: reveal the real hero underneath right as its
-  // own closing card fades in, then dissolve the video to hand off to it
+  // the video is trimmed to end on bare wet rock + molten gold, just before
+  // its own (approximate, AI-generated) bottle would appear — the real
+  // product photo takes over from there instead, dissolving in over the top
   video.addEventListener('timeupdate', function(){
     if (skipped) return;
-    if (video.currentTime >= 7.4) reveal();
-    if (video.currentTime >= 8.7) fadeIntro();
+    if (video.currentTime >= 3.9) reveal();
+    if (video.currentTime >= 4.5) fadeIntro();
   });
   video.addEventListener('ended', function(){
     if (skipped) return;
@@ -433,8 +434,8 @@
   if (playPromise && playPromise.catch) playPromise.catch(skipIntro);
 
   // safety net in case video events never fire (blocked autoplay, slow network…)
-  setTimeout(function(){ if (!revealed) reveal(); }, 11000);
-  setTimeout(function(){ intro.classList.add('hidden'); }, 12000);
+  setTimeout(function(){ if (!revealed) reveal(); }, 7000);
+  setTimeout(function(){ intro.classList.add('hidden'); }, 7600);
 
   var bottleBtn = document.getElementById('bottle-btn');
   var discoverBtn = document.getElementById('discover-btn');
