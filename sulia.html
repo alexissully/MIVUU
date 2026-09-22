@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>SULIA — Extrait de Parfum</title>
+<meta name="description" content="SULIA. Un parfum. Un territoire. Une émotion. Édition limitée à 500 exemplaires.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;500&family=EB+Garamond:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --gold:#c9a568;
+    --gold-bright:#e8cd97;
+    --ink:#efe8dc;
+    --muted:#9c9284;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+  html,body{height:100%;}
+  body{
+    background:#030201;
+    color:var(--ink);
+    font-family:'EB Garamond', Georgia, serif;
+    overflow:hidden;
+    width:100%;
+  }
+  .serif{font-family:'Cormorant Garamond', Georgia, serif;}
+  .logo{
+    font-family:'Cormorant Garamond', Georgia, serif;
+    letter-spacing:.55em;
+    font-weight:400;
+    text-indent:.55em; /* balance the trailing tracking */
+  }
+  button{font-family:inherit;cursor:pointer;}
+  a{color:inherit;}
+
+  /* ---------------------------------- */
+  /* CINEMATIC VIDEO INTRO               */
+  /* ---------------------------------- */
+  #earth-intro{
+    position:fixed;inset:0;z-index:100;
+    background:#000;
+    cursor:pointer;
+  }
+  #earth-intro.hidden{display:none;}
+  #earth-intro.leaving{
+    transition:opacity .8s ease;
+    opacity:0;
+    pointer-events:none;
+  }
+  #intro-video{
+    position:absolute;inset:0;
+    width:100%; height:100%;
+    object-fit:cover;
+    background:#000;
+  }
+  #earth-intro::after{
+    /* subtle letterbox vignette so the crossfade edges melt into the page */
+    content:"";
+    position:absolute;inset:0;
+    box-shadow:inset 0 0 12vw rgba(0,0,0,.55);
+    pointer-events:none;
+  }
+
+  .intro-skip{
+    position:absolute; bottom:28px; left:50%; transform:translateX(-50%);
+    font-size:11px; letter-spacing:.2em; color:rgba(239,232,220,.55);
+    opacity:0; animation:skipInOut 2.6s ease 1s forwards;
+    text-transform:uppercase;
+    white-space:nowrap;
+    z-index:2;
+  }
+  @keyframes skipInOut{
+    0%{opacity:0;}
+    22%{opacity:1;}
+    78%{opacity:1;}
+    100%{opacity:0;}
+  }
+
+  .brand-mark{
+    position:fixed; right:clamp(16px,4vw,28px); bottom:clamp(16px,4vh,28px);
+    z-index:10;
+    color:rgba(239,232,220,.55);
+    opacity:0; animation:fadeUp 1s ease .4s forwards;
+    pointer-events:none;
+  }
+  .brand-mark svg{display:block;width:15px;height:15px;}
+
+  /* ---------------------------------- */
+  /* SCENE (background under everything) */
+  /* ---------------------------------- */
+  #scene{
+    position:fixed;inset:0;
+    background:
+      radial-gradient(120% 70% at 50% -10%, rgba(60,42,20,.35), transparent 55%),
+      radial-gradient(90% 60% at 50% 115%, rgba(0,0,0,.9), transparent 60%),
+      linear-gradient(180deg, #0c0805 0%, #050302 60%, #020101 100%);
+    overflow:hidden;
+  }
+  .ground{
+    position:absolute; left:0; right:0; bottom:0; height:26vh;
+    background:
+      radial-gradient(120% 100% at 50% 0%, rgba(90,60,30,.25), transparent 70%),
+      linear-gradient(180deg, transparent 0%, rgba(0,0,0,.7) 40%, #010101 100%);
+    opacity:.0;
+    animation:groundFade 1.4s ease .3s forwards;
+  }
+  @keyframes groundFade{to{opacity:1;}}
+  .ground-glow{
+    position:absolute; left:50%; bottom:6vh; width:60vw; max-width:640px; height:120px;
+    transform:translateX(-50%);
+    background:radial-gradient(closest-side, rgba(201,165,104,.35), transparent 70%);
+    filter:blur(18px);
+    animation:glowPulse 5s ease-in-out infinite;
+  }
+  @keyframes glowPulse{
+    0%,100%{opacity:.55;}
+    50%{opacity:.9;}
+  }
+
+  /* ---------------------------------- */
+  /* HERO                                */
+  /* ---------------------------------- */
+  #hero{
+    position:fixed;inset:0;
+    display:flex;flex-direction:column;align-items:center;justify-content:space-between;
+    text-align:center;
+    padding:clamp(72px, 11vh, 120px) 24px clamp(20px, 3.5vh, 40px);
+  }
+  .hero-center{
+    flex:1 1 auto; min-height:0; width:100%;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+  }
+  .topbar{
+    position:absolute; top:0; left:0; right:0;
+    display:flex; align-items:center; justify-content:space-between;
+    padding:26px clamp(20px,5vw,48px);
+    font-size:11px; letter-spacing:.25em; color:var(--muted);
+  }
+  .brand{
+    font-size:clamp(20px,3vw,26px); color:var(--ink);
+  }
+
+  @keyframes fadeUp{
+    from{opacity:0; transform:translateY(10px);}
+    to{opacity:1; transform:translateY(0);}
+  }
+
+  /* everything below starts hidden and is revealed together, in sequence,
+     once JS decides the moment is right (video crossfade point, or skip) */
+  #bottle-wrap{
+    position:relative;
+    opacity:0; transform:translateY(46px) scale(.95);
+  }
+  body.reveal #bottle-wrap{
+    animation:riseIn 1.1s cubic-bezier(.16,1,.3,1) forwards;
+  }
+  @keyframes riseIn{
+    to{opacity:1; transform:translateY(0) scale(1);}
+  }
+  #bottle-btn{
+    position:relative;
+    display:block; border:none; background:none; padding:0;
+  }
+  body.reveal #bottle-btn{
+    animation:idleFloat 6s ease-in-out 1.1s infinite;
+  }
+  @keyframes idleFloat{
+    0%,100%{transform:translateY(0);}
+    50%{transform:translateY(-10px);}
+  }
+  #bottle-btn img{
+    display:block;
+    width:auto;
+    height:clamp(230px, 44vh, 440px);
+    max-width:70vw;
+    -webkit-mask-image:radial-gradient(ellipse 100% 100% at 50% 50%, black 80%, transparent 100%);
+    mask-image:radial-gradient(ellipse 100% 100% at 50% 50%, black 80%, transparent 100%);
+    border:1px solid rgba(201,165,104,.28);
+    filter:drop-shadow(0 30px 40px rgba(0,0,0,.65)) brightness(.94) saturate(1.05);
+    transition:filter .4s ease, transform .4s ease, border-color .4s ease;
+  }
+  #bottle-btn:hover img{
+    filter:drop-shadow(0 30px 55px rgba(201,165,104,.35)) brightness(1);
+    border-color:rgba(201,165,104,.55);
+  }
+  #bottle-btn:focus-visible img{outline:1px solid var(--gold);outline-offset:6px;}
+
+  .hero-copy{
+    margin-top:clamp(14px, 2.6vh, 28px);
+    opacity:0;
+  }
+  body.reveal .hero-copy{animation:fadeUp .8s ease .15s forwards;}
+  .hero-copy h1{
+    font-weight:400; font-size:clamp(26px,4vw,34px); letter-spacing:.5em; text-indent:.5em;
+  }
+  .hero-copy .sub{
+    margin-top:6px; font-size:12.5px; letter-spacing:.2em; color:var(--muted);
+  }
+
+  .tagline-words{
+    margin-top:clamp(10px, 2vh, 18px);
+    font-size:11.5px; letter-spacing:.14em; color:rgba(239,232,220,.6);
+    opacity:0;
+  }
+  body.reveal .tagline-words{animation:fadeUp .8s ease .3s forwards;}
+  .tagline-words span{margin:0 .55em; color:rgba(201,165,104,.7);}
+
+  .discover-btn{
+    margin-top:clamp(18px, 3.2vh, 30px);
+    display:inline-flex; align-items:center; justify-content:center;
+    padding:13px 30px;
+    border:1px solid rgba(239,232,220,.55);
+    border-radius:999px;
+    font-size:11px; letter-spacing:.28em; text-transform:uppercase;
+    color:var(--ink); background:transparent;
+    opacity:0;
+    transition:border-color .35s ease, background .35s ease, color .35s ease, letter-spacing .35s ease;
+  }
+  body.reveal .discover-btn{animation:fadeUp .8s ease .45s forwards;}
+  .discover-btn:hover{
+    border-color:var(--gold-bright);
+    background:var(--gold-bright);
+    color:#151007;
+    letter-spacing:.32em;
+  }
+
+  /* ---------------------------------- */
+  /* BUY OVERLAY                         */
+  /* ---------------------------------- */
+  #buy{
+    position:fixed; inset:0; z-index:50;
+    display:flex; align-items:center; justify-content:center;
+    background:rgba(2,1,1,.72);
+    backdrop-filter:blur(6px); -webkit-backdrop-filter:blur(6px);
+    opacity:0; pointer-events:none;
+    transition:opacity .5s ease;
+  }
+  #buy.show{opacity:1; pointer-events:auto;}
+  .buy-card{
+    width:min(420px, 88vw);
+    text-align:center;
+    padding:clamp(28px,5vw,44px) clamp(22px,5vw,36px) 34px;
+    background:linear-gradient(180deg, rgba(20,14,9,.9), rgba(6,4,2,.96));
+    border:1px solid rgba(201,165,104,.25);
+    box-shadow:0 30px 70px rgba(0,0,0,.6);
+    transform:translateY(14px) scale(.97);
+    transition:transform .55s cubic-bezier(.16,1,.3,1);
+  }
+  #buy.show .buy-card{transform:translateY(0) scale(1);}
+  .buy-close{
+    position:absolute; top:26px; left:clamp(20px,5vw,48px);
+    font-size:11px; letter-spacing:.2em; color:var(--muted);
+    background:none; border:none;
+  }
+  .buy-close:hover{color:var(--ink);}
+  .buy-thumb-wrap{
+    position:relative;
+    width:96px; margin:0 auto 18px;
+  }
+  .buy-thumb-wrap::before{
+    content:"";
+    position:absolute; inset:-45%;
+    background:radial-gradient(closest-side, rgba(201,165,104,.32), transparent 72%);
+    filter:blur(16px);
+  }
+  .buy-thumb{
+    position:relative;
+    display:block; width:100%; height:auto;
+    -webkit-mask-image:radial-gradient(ellipse 56% 62% at 50% 42%, black 22%, transparent 86%);
+    mask-image:radial-gradient(ellipse 56% 62% at 50% 42%, black 22%, transparent 86%);
+    filter:brightness(.96) saturate(1.08);
+  }
+  .buy-card h2{
+    font-weight:400; font-size:22px; letter-spacing:.45em; text-indent:.45em;
+  }
+  .buy-card .sub{
+    margin-top:4px; font-size:12px; letter-spacing:.12em; color:var(--muted);
+  }
+  .buy-price{
+    margin:14px 0 20px; font-size:15px; letter-spacing:.1em; color:var(--gold-bright);
+  }
+  .buy-edition{
+    font-size:10.5px; letter-spacing:.2em; color:var(--muted); margin-bottom:22px;
+  }
+  form#reserve{display:flex; flex-direction:column; gap:12px;}
+  #reserve input[type="email"]{
+    width:100%; background:transparent; border:none; border-bottom:1px solid rgba(239,232,220,.3);
+    color:var(--ink); font-family:inherit; font-size:14px; letter-spacing:.03em;
+    padding:10px 2px; text-align:center; outline:none;
+    transition:border-color .3s ease;
+  }
+  #reserve input[type="email"]::placeholder{color:rgba(239,232,220,.4);}
+  #reserve input[type="email"]:focus{border-color:var(--gold);}
+  #reserve button{
+    margin-top:10px;
+    background:var(--ink); color:#151007; border:none;
+    padding:13px 16px; font-size:11.5px; letter-spacing:.28em; text-transform:uppercase;
+    transition:background .3s ease, letter-spacing .3s ease;
+  }
+  #reserve button:hover{background:var(--gold-bright); letter-spacing:.34em;}
+  .buy-note{
+    margin-top:16px; font-size:10.5px; letter-spacing:.05em; color:rgba(156,146,132,.8);
+  }
+  .buy-error{
+    font-size:11px; color:#d98a6a; min-height:14px; letter-spacing:.05em;
+  }
+
+  .thanks{display:none;}
+  #buy.done .reserve-form{display:none;}
+  #buy.done .thanks{display:block;}
+  .thanks .rule{width:26px;height:1px;background:rgba(201,165,104,.5);margin:14px auto 16px;}
+  .thanks p{font-size:13px; line-height:1.7; color:var(--muted); letter-spacing:.03em;}
+  .thanks p.mail-echo{color:var(--gold-bright); margin-top:6px;}
+  .thanks button{
+    margin-top:22px; background:none; border:1px solid rgba(239,232,220,.3); color:var(--ink);
+    padding:12px 22px; font-size:11px; letter-spacing:.25em;
+  }
+  .thanks button:hover{border-color:var(--gold);}
+
+  @media (max-width: 420px){
+    .buy-card{padding-top:56px;}
+  }
+</style>
+</head>
+<body>
+
+<div id="scene">
+  <div class="ground"></div>
+  <div class="ground-glow"></div>
+</div>
+
+<main id="hero">
+  <div class="topbar">
+    <span>FR</span>
+    <span class="brand logo">SULIA</span>
+    <span aria-hidden="true" style="opacity:0;">FR</span>
+  </div>
+
+  <div class="hero-center">
+    <div id="bottle-wrap">
+      <button id="bottle-btn" type="button" aria-label="Découvrir et réserver SULIA">
+        <img src="assets/sulia/bottle-hero.jpg" alt="Flacon SULIA, extrait de parfum">
+      </button>
+    </div>
+
+    <div class="hero-copy">
+      <h1 class="serif">SULIA</h1>
+      <div class="sub">EXTRAIT DE PARFUM</div>
+    </div>
+
+    <div class="tagline-words">PIERRE<span>·</span>LUMIÈRE<span>·</span>MÉMOIRE<span>·</span>PEAU</div>
+
+    <button type="button" id="discover-btn" class="discover-btn">Découvrir</button>
+  </div>
+</main>
+
+<div class="brand-mark" aria-hidden="true">
+  <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 0c0 6.5 2 9.5 12 12-10 2.5-12 5.5-12 12 0-6.5-2-9.5-12-12C10 9.5 12 6.5 12 0Z"></path></svg>
+</div>
+
+<div id="buy" role="dialog" aria-modal="true" aria-label="Réserver SULIA">
+  <button class="buy-close" type="button" id="buy-close">← RETOUR</button>
+  <div class="buy-card">
+    <div class="reserve-form">
+      <div class="buy-thumb-wrap">
+        <img class="buy-thumb" src="assets/sulia/bottle-thumb.jpg" alt="">
+      </div>
+      <h2 class="serif">SULIA</h2>
+      <div class="sub">EXTRAIT DE PARFUM · 50 ML</div>
+      <div class="buy-price">200 €</div>
+      <div class="buy-edition">ÉDITION LIMITÉE — 500 EXEMPLAIRES</div>
+      <form id="reserve" novalidate>
+        <input type="email" id="email" name="email" placeholder="Votre adresse email" autocomplete="email" required>
+        <div class="buy-error" id="buy-error"></div>
+        <button type="submit">Réserver mon flacon</button>
+      </form>
+      <div class="buy-note">Un email vous confirmera votre réservation.</div>
+    </div>
+    <div class="thanks">
+      <h2 class="serif">MERCI</h2>
+      <div class="rule"></div>
+      <p>Votre réservation a bien été enregistrée.<br>Un email de confirmation vous a été envoyé à</p>
+      <p class="mail-echo" id="mail-echo"></p>
+      <button type="button" id="thanks-close">Retourner à l'accueil</button>
+    </div>
+  </div>
+</div>
+
+<div id="earth-intro">
+  <video id="intro-video" autoplay muted playsinline preload="auto" poster="assets/sulia/intro-poster.jpg">
+    <source src="assets/sulia/intro.webm" type="video/webm">
+    <source src="assets/sulia/intro.mp4" type="video/mp4">
+  </video>
+  <div class="intro-skip">Cliquez pour continuer</div>
+</div>
+
+<script>
+(function(){
+  var intro = document.getElementById('earth-intro');
+  var video = document.getElementById('intro-video');
+  var skipped = false;
+  var revealed = false;
+  var fading = false;
+
+  function reveal(){
+    if (revealed) return;
+    revealed = true;
+    document.body.classList.add('reveal');
+  }
+
+  function fadeIntro(){
+    if (fading) return;
+    fading = true;
+    intro.classList.add('leaving');
+    setTimeout(function(){ intro.classList.add('hidden'); }, 850);
+  }
+
+  function skipIntro(){
+    if (skipped) return;
+    skipped = true;
+    reveal();
+    try { video.pause(); } catch(e){}
+    intro.style.transition = 'opacity .4s ease';
+    intro.style.opacity = '0';
+    intro.style.pointerEvents = 'none';
+    setTimeout(function(){ intro.classList.add('hidden'); }, 420);
+  }
+
+  intro.addEventListener('click', skipIntro);
+
+  // the video is trimmed to end on bare wet rock + molten gold, just before
+  // its own (approximate, AI-generated) bottle would appear — the real
+  // product photo takes over from there instead, dissolving in over the top
+  video.addEventListener('timeupdate', function(){
+    if (skipped) return;
+    if (video.currentTime >= 3.9) reveal();
+    if (video.currentTime >= 4.5) fadeIntro();
+  });
+  video.addEventListener('ended', function(){
+    if (skipped) return;
+    reveal();
+    intro.classList.add('hidden');
+  });
+  video.addEventListener('error', skipIntro);
+
+  var playPromise = video.play();
+  if (playPromise && playPromise.catch) playPromise.catch(skipIntro);
+
+  // safety net in case video events never fire (blocked autoplay, slow network…)
+  setTimeout(function(){ if (!revealed) reveal(); }, 7000);
+  setTimeout(function(){ intro.classList.add('hidden'); }, 7600);
+
+  var bottleBtn = document.getElementById('bottle-btn');
+  var discoverBtn = document.getElementById('discover-btn');
+  var buy = document.getElementById('buy');
+  var buyClose = document.getElementById('buy-close');
+  var thanksClose = document.getElementById('thanks-close');
+  var form = document.getElementById('reserve');
+  var emailInput = document.getElementById('email');
+  var errorEl = document.getElementById('buy-error');
+  var mailEcho = document.getElementById('mail-echo');
+
+  function openBuy(){
+    buy.classList.add('show');
+  }
+  function closeBuy(){
+    buy.classList.remove('show');
+    setTimeout(function(){
+      buy.classList.remove('done');
+      form.reset();
+      errorEl.textContent = '';
+    }, 400);
+  }
+
+  bottleBtn.addEventListener('click', openBuy);
+  discoverBtn.addEventListener('click', openBuy);
+  buyClose.addEventListener('click', closeBuy);
+  thanksClose.addEventListener('click', closeBuy);
+  buy.addEventListener('click', function(e){
+    if (e.target === buy) closeBuy();
+  });
+  document.addEventListener('keydown', function(e){
+    if (e.key === 'Escape' && buy.classList.contains('show')) closeBuy();
+  });
+
+  form.addEventListener('submit', function(e){
+    e.preventDefault();
+    var value = emailInput.value.trim();
+    var valid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+    if (!valid){
+      errorEl.textContent = 'Merci de renseigner une adresse email valide.';
+      return;
+    }
+    errorEl.textContent = '';
+    mailEcho.textContent = value;
+    buy.classList.add('done');
+  });
+})();
+</script>
+
+</body>
+</html>
